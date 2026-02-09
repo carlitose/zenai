@@ -7,7 +7,9 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
-    "gen_meditation": "tsx cli/test-generate.ts"
+    "gen_meditation": "tsx cli/test-generate.ts",
+    "eval": "npx promptfoo eval -c promptfoo/promptfooconfig.yaml -j 2",
+    "eval:view": "npx promptfoo view"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",
@@ -31,6 +33,7 @@
     "@types/react": "~19.1.0",
     "babel-plugin-module-resolver": "^5.0.2",
     "dotenv": "^17.2.3",
+    "promptfoo": "^0.120.23",
     "tsx": "^4.21.0",
     "typescript": "~5.9.2"
   },

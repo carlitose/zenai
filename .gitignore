@@ -43,3 +43,6 @@ yarn-error.*
 # ZenAI
 cli/output/
 .env
+
+# Promptfoo
+promptfoo/.promptfoo-cache/

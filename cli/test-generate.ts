@@ -7,7 +7,7 @@ import OpenAI from "openai";
 config({ path: path.resolve(__dirname, "../.env") });
 
 function createOpenAIClient(apiKey: string): OpenAI {
-  return new OpenAI({ apiKey, timeout: 300_000, maxRetries: 3 });
+  return new OpenAI({ apiKey, timeout: 600_000, maxRetries: 3 });
 }
 
 async function withRetry<T>(
@@ -313,24 +313,21 @@ async function generateText(
   const userPrompt = `Meditation type: ${type}\nTarget duration: ${durationMinutes} minutes\n\n${prompt}`;
 
   const stream = await withRetry(
-    () => client.chat.completions.create({
+    () => client.responses.create({
       model: "gpt-5.2",
-      messages: [
-        { role: "system", content: SYSTEM_PROMPT },
-        { role: "user", content: userPrompt },
-      ],
-      reasoning_effort: "medium",
-      max_completion_tokens: 16384,
+      instructions: SYSTEM_PROMPT,
+      input: [{ role: "user", content: userPrompt }],
+      reasoning: { effort: "medium" },
+      max_output_tokens: 16384,
       stream: true,
     }),
     { label: "Text generation" },
   );
 
   let fullContent = "";
-  for await (const chunk of stream) {
-    const delta = chunk.choices[0]?.delta?.content;
-    if (delta) {
-      fullContent += delta;
+  for await (const event of stream) {
+    if (event.type === "response.output_text.delta") {
+      fullContent += event.delta;
       process.stdout.write(c.dim("."));
     }
   }
@@ -468,7 +465,7 @@ async function main() {
   console.log(`  Audio:    ${audio ? "yes" : "no (text only)"}`);
   const client = createOpenAIClient(apiKey);
 
-  console.log(c.dim("\nGenerating text with GPT-5.2 (streaming + reasoning)...\n"));
+  console.log(c.dim("\nGenerating text with GPT-5.2 (Responses API + reasoning)...\n"));
 
   const text = await generateText(client, prompt, type, duration);
 

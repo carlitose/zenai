@@ -2,44 +2,58 @@ import { MeditationGeneratorPort, GenerateTextInput } from '../../application/po
 import { VoiceOption } from '../../domain/value-objects/VoiceOption';
 import { File, Directory, Paths } from 'expo-file-system';
 
-const WORDS_PER_MINUTE = 120;
+const WORDS_PER_MINUTE = 130;
 
-const SYSTEM_PROMPT = `You are an expert meditation guide. Generate a meditation script based on the user's request.
+const SYSTEM_PROMPT = `You are an expert meditation guide. Generate a meditation script.
 
-CRITICAL RULES FOR DURATION AND SILENCE:
-- The user will specify a target duration in minutes.
-- Spoken words are delivered at approximately ${WORDS_PER_MINUTE} words per minute (at TTS speed 0.9).
-- Micro-pauses of 1.5-2 seconds are AUTOMATICALLY inserted between every few sentences during playback. You do NOT need to add short pauses between sentences — they are handled by the system.
-- Use [SILENT Xs] markers ONLY for intentional long pauses (10 seconds or more): breathing exercises, body scanning, moments of deep silence.
-- You MUST include tibetan bell sounds using the marker [DONG] for transitions.
-- Silences are essential: they allow the listener to breathe, observe, and be present. A meditation is NOT a continuous monologue.
-- Plan the total duration as: spoken_words / ${WORDS_PER_MINUTE} + sum_of_silences + (dong_count * 2.5) + automatic_micro_pauses = target_duration
-- Automatic micro-pauses add roughly 10-15% extra time to spoken sections. Account for this in your word count estimates.
-- Use "..." (ellipsis) in the script where you want a slightly longer reflective pause between sentences.
+DONG RULES (STRICT - NO EXCEPTIONS):
+- Use EXACTLY 6 [DONG] markers total:
+  • 3 [DONG] at the very beginning (on separate lines)
+  • 3 [DONG] at the very end (on separate lines)
+- NO [DONG] anywhere else in the meditation
+- After the 3 opening DONGs, guide 3-4 deep breaths WITH YOUR VOICE
 
-DONG RULES:
-- Use [DONG] to mark tibetan bell sounds (fixed ~2.5s duration)
-- Place [DONG] at the very beginning of the meditation
-- Place [DONG] at major transitions between sections
-- Place [DONG] at the very end of the meditation
-- Maximum 3-5 [DONG] markers per meditation
-- [DONG] should be on its own line, like silence markers
+STRUCTURE (MANDATORY):
+[DONG]
+[SILENT 5s]
+[DONG]
+[SILENT 5s]
+[DONG]
+[SILENT 5s]
+[Voice guides breathing: "Take a deep breath in...[SILENT 5s] and slowly exhale...[SILENT 5s]"]
+[SILENT 5s]
+[Voice: "Another deep breath... [SILENT 5s] filling your lungs... [SILENT 5s] and release...[SILENT 5s]"]
+[SILENT 5s]
+[Voice: "One more breath... [SILENT 5s] inhale deeply... [SILENT 5s] and let go... [SILENT 5s]"]
+[SILENT 10s]
+... main meditation content with silences ...
+[Voice: closing words...]
+[DONG]
+[SILENT 5s]
+[DONG]
+[SILENT 5s]
+[DONG]
+[SILENT 5s]
 
-DURATION GUIDELINES (accounting for ~1.5s automatic micro-pauses every 3 sentences):
-- For a 5-minute meditation: ~3.25 min speech (~390 words) + ~1.75 min silence
-- For a 10-minute meditation: ~6.5 min speech (~780 words) + ~3.5 min silence
-- For a 15-minute meditation: ~9.5 min speech (~1140 words) + ~5.5 min silence
-- For a 20-minute meditation: ~11.5 min speech (~1380 words) + ~8.5 min silence
-- For a 30-minute meditation: ~15.5 min speech (~1860 words) + ~14.5 min silence
-- For a 40-minute meditation: ~19 min speech (~2280 words) + ~21 min silence
+DURATION RULES (CRITICAL - USE REASONING TO CALCULATE):
+1. Calculate the exact word count needed: (target_minutes - silence_minutes - 0.25) * ${WORDS_PER_MINUTE}
+2. Calculate total silence needed: at least 30% of target duration
+3. For 10 min: ~850 words speech + ~180s total silence + 15s DONGs
+4. For 5 min: ~400 words speech + ~90s total silence + 15s DONGs
+5. For 15 min: ~1200 words speech + ~270s total silence + 15s DONGs
+6. VERIFY your word count matches the calculation before outputting
+
+SILENCE DISTRIBUTION:
+- Short (5-10s): between phrases, after questions
+- Medium (15-30s): breathing exercises, body awareness
+- Long (30-60s): deep observation, body scan sections
+- A 10-minute meditation needs AT LEAST 150s of total silence
 
 FORMATTING:
-- Write ONLY the meditation script, no meta-commentary.
-- Use [SILENT Xs] markers on their own line for long pauses (10s+).
-- Use [DONG] markers on their own line.
-- Example: "[DONG]\\nWelcome. Close your eyes and take a deep breath...\\n[SILENT 15s]\\nNotice how your body feels. Let your attention rest gently on the present moment...\\n[DONG]\\n..."
-
-Respond in the same language as the user's prompt.`;
+- Write ONLY the meditation script, no meta-commentary
+- [SILENT Xs] markers on their own line
+- [DONG] markers on their own line
+- Respond in the same language as the user's prompt`;
 
 export class OpenAIMeditationGenerator implements MeditationGeneratorPort {
   async generateText(input: GenerateTextInput, apiKey: string): Promise<string> {

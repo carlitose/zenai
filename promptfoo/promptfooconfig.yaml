@@ -1,0 +1,143 @@
+description: "ZenAI Meditation Script Quality Evaluation"
+
+prompts:
+  - file://prompts/meditation-system.json
+
+providers:
+  - id: file://providers/openai-gpt5.mjs
+
+defaultTest:
+  assert:
+    - type: javascript
+      value: file://assertions/dongMarkers.js
+    - type: javascript
+      value: file://assertions/silentMarkers.js
+    - type: javascript
+      value: file://assertions/wordCount.js
+    - type: javascript
+      value: file://assertions/noMetaCommentary.js
+    - type: javascript
+      value: file://assertions/structureValidator.js
+    - type: not-icontains
+      value: "here is your meditation"
+    - type: not-icontains
+      value: "as an AI"
+
+tests:
+  # --- Italian tests ---
+
+  - description: "IT guided 5min - rilassamento"
+    vars:
+      type: guided
+      duration: "5"
+      prompt: "Rilassamento dopo una giornata stressante"
+    assert:
+      - type: icontains
+        value: "respir"
+      - type: not-icontains
+        value: "breath"
+
+  - description: "IT vipassana 10min - corpo e sensazioni"
+    vars:
+      type: vipassana
+      duration: "10"
+      prompt: "Attenzione al corpo e alle sensazioni fisiche"
+    assert:
+      - type: icontains
+        value: "corpo"
+      - type: not-icontains
+        value: "body"
+
+  - description: "IT sleep 15min - dormire profondamente"
+    vars:
+      type: sleep
+      duration: "15"
+      prompt: "Aiutami a dormire profondamente"
+    assert:
+      - type: icontains
+        value: "sonno"
+
+  - description: "IT relaxation 20min - rilassamento muscolare"
+    vars:
+      type: relaxation
+      duration: "20"
+      prompt: "Rilassamento muscolare progressivo"
+    assert:
+      - type: icontains
+        value: "muscol"
+
+  - description: "IT self_compassion 10min - auto-compassione"
+    vars:
+      type: self_compassion
+      duration: "10"
+      prompt: "Auto-compassione e gentilezza verso me stesso"
+    assert:
+      - type: icontains
+        value: "gentil"
+
+  - description: "IT breathing 5min - respirazione consapevole"
+    vars:
+      type: breathing
+      duration: "5"
+      prompt: "Respirazione consapevole e calma"
+    assert:
+      - type: icontains
+        value: "respir"
+
+  # --- English tests ---
+
+  - description: "EN guided 5min - morning intentions"
+    vars:
+      type: guided
+      duration: "5"
+      prompt: "Morning positive intentions to start the day"
+    assert:
+      - type: icontains
+        value: "breath"
+      - type: not-icontains
+        value: "respir"
+
+  - description: "EN vipassana 10min - breath awareness"
+    vars:
+      type: vipassana
+      duration: "10"
+      prompt: "Breath awareness and present moment meditation"
+    assert:
+      - type: icontains
+        value: "breath"
+
+  - description: "EN sleep 15min - body scan"
+    vars:
+      type: sleep
+      duration: "15"
+      prompt: "Body scan for deep sleep"
+    assert:
+      - type: icontains
+        value: "body"
+
+  - description: "EN relaxation 20min - progressive muscle"
+    vars:
+      type: relaxation
+      duration: "20"
+      prompt: "Progressive muscle release and relaxation"
+    assert:
+      - type: icontains
+        value: "muscle"
+
+  - description: "EN self_compassion 10min - loving kindness"
+    vars:
+      type: self_compassion
+      duration: "10"
+      prompt: "Loving kindness meditation for self-compassion"
+    assert:
+      - type: icontains
+        value: "kind"
+
+  - description: "EN breathing 5min - box breathing"
+    vars:
+      type: breathing
+      duration: "5"
+      prompt: "Box breathing exercise for calm and focus"
+    assert:
+      - type: icontains
+        value: "breath"
