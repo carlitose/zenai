@@ -1,7 +1,7 @@
 description: "ZenAI Meditation Script Quality Evaluation"
 
 prompts:
-  - file://prompts/meditation-system.json
+  - file://prompts/meditation-system.js
 
 providers:
   - id: openai:chat:gpt-5.2
