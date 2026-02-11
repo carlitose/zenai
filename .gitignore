@@ -46,3 +46,5 @@ cli/output/
 
 # Promptfoo
 promptfoo/.promptfoo-cache/
+deploy.sh
+app.json

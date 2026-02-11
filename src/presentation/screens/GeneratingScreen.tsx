@@ -23,8 +23,8 @@ export function GeneratingScreen() {
   const { phase, meditation, error, generate, reset } = useGenerateMeditation();
 
   useEffect(() => {
-    const { prompt, type, durationMinutes, voice, speed } = route.params;
-    generate(prompt, type, durationMinutes, voice, speed);
+    const { prompt, type, durationMinutes, voice, speed, language } = route.params;
+    generate(prompt, type, durationMinutes, voice, speed, language);
   }, []);
 
   useEffect(() => {
@@ -40,8 +40,8 @@ export function GeneratingScreen() {
 
   const handleRetry = () => {
     reset();
-    const { prompt, type, durationMinutes, voice, speed } = route.params;
-    generate(prompt, type, durationMinutes, voice, speed);
+    const { prompt, type, durationMinutes, voice, speed, language } = route.params;
+    generate(prompt, type, durationMinutes, voice, speed, language);
   };
 
   return (

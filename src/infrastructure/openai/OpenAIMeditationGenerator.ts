@@ -1,14 +1,7 @@
 import { MeditationGeneratorPort, GenerateTextInput } from '../../application/ports/MeditationGeneratorPort';
 import { VoiceOption } from '../../domain/value-objects/VoiceOption';
 import { File, Directory, Paths } from 'expo-file-system';
-import { MEDITATION_SYSTEM_PROMPT } from '../../shared/prompts/meditation-system-prompt';
-
-const TTS_VOICE_INSTRUCTIONS = [
-  'Delivery: Slow and spacious, with natural pauses between phrases and sentences, allowing the listener to breathe and absorb each word.',
-  'Voice: Warm, soft, and reassuring, like a gentle whisper that carries — unhurried, steady, and deeply calming.',
-  'Tone: Peaceful, nurturing, and grounded, as if guiding someone through a quiet sanctuary.',
-  'Pronunciation: Smooth and flowing, with elongated vowels, gentle inflections, and no sense of urgency or sharpness.',
-].join(' ');
+import { MEDITATION_SYSTEM_PROMPT, TTS_VOICE_INSTRUCTIONS } from '../../shared/prompts/meditation-system-prompt';
 
 export class OpenAIMeditationGenerator implements MeditationGeneratorPort {
   async generateText(input: GenerateTextInput, apiKey: string): Promise<string> {
@@ -43,9 +36,9 @@ export class OpenAIMeditationGenerator implements MeditationGeneratorPort {
     return (data as any).choices[0].message.content;
   }
 
-  async generateSegmentAudio(text: string, voice: VoiceOption, apiKey: string, speed: number = 0.9): Promise<string> {
+  async generateSegmentAudio(text: string, voice: VoiceOption, apiKey: string, speed: number = 0.9, language?: string): Promise<string> {
     if (text.length > 4000) {
-      return this.generateLongSegmentAudio(text, voice, apiKey, speed);
+      return this.generateLongSegmentAudio(text, voice, apiKey, speed, language);
     }
 
     const response = await fetch('https://api.openai.com/v1/audio/speech', {
@@ -61,6 +54,7 @@ export class OpenAIMeditationGenerator implements MeditationGeneratorPort {
         response_format: 'mp3',
         speed,
         instructions: TTS_VOICE_INSTRUCTIONS,
+        ...(language ? { language } : {}),
       }),
     });
 
@@ -76,6 +70,7 @@ export class OpenAIMeditationGenerator implements MeditationGeneratorPort {
     voice: VoiceOption,
     apiKey: string,
     speed: number = 0.9,
+    language?: string,
   ): Promise<string> {
     const sentences = text.match(/[^.!?]+[.!?]+/g) || [text];
     const chunks: string[] = [];
@@ -93,7 +88,7 @@ export class OpenAIMeditationGenerator implements MeditationGeneratorPort {
 
     const paths: string[] = [];
     for (const chunk of chunks) {
-      const path = await this.generateSegmentAudio(chunk, voice, apiKey, speed);
+      const path = await this.generateSegmentAudio(chunk, voice, apiKey, speed, language);
       paths.push(path);
     }
 
@@ -118,7 +113,6 @@ export class OpenAIMeditationGenerator implements MeditationGeneratorPort {
 
   private buildUserPrompt(input: GenerateTextInput): string {
     let prompt = input.prompt;
-    if (input.type) prompt += `\nMeditation type: ${input.type}`;
     if (input.durationMinutes) prompt += `\nTarget total duration: ${input.durationMinutes} minutes`;
     return prompt;
   }

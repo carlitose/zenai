@@ -1,5 +1,12 @@
 export const WORDS_PER_MINUTE = 130;
 
+export const TTS_VOICE_INSTRUCTIONS = [
+  'Delivery: Slow and spacious, with natural pauses between phrases and sentences, allowing the listener to breathe and absorb each word.',
+  'Voice: Warm, soft, and reassuring, like a gentle whisper that carries — unhurried, steady, and deeply calming.',
+  'Tone: Peaceful, nurturing, and grounded, as if guiding someone through a quiet sanctuary.',
+  'Pronunciation: Smooth and flowing, with elongated vowels, gentle inflections, and no sense of urgency or sharpness.',
+].join(' ');
+
 export const MEDITATION_SYSTEM_PROMPT = `You are an expert meditation guide. Generate a meditation script.
 
 DONG RULES (STRICT - NO EXCEPTIONS):

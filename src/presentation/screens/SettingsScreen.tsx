@@ -17,6 +17,7 @@ import { radius } from '../theme/radius';
 import { shadows } from '../theme/shadows';
 import { usePreferences } from '../hooks/usePreferences';
 import { VoiceOptions, VoiceDescriptors } from '../../domain/value-objects/VoiceOption';
+import { Languages } from '../../domain/value-objects/Language';
 
 const DURATION_OPTIONS = [5, 10, 15, 20, 30, 40];
 
@@ -162,6 +163,30 @@ export function SettingsScreen() {
                 </Text>
                 <Text style={[styles.speedValue, isSelected && styles.speedValueSelected]}>
                   {value}x
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      </View>
+
+      {/* Language Section */}
+      <View style={styles.section}>
+        <View style={styles.sectionHeader}>
+          <Ionicons name="globe-outline" size={18} color={colors.accent} />
+          <Text style={styles.sectionTitle}>Default Language</Text>
+        </View>
+        <View style={styles.durationRow}>
+          {Languages.map(({ code, label }) => {
+            const isSelected = prefs.defaultLanguage === code;
+            return (
+              <TouchableOpacity
+                key={code}
+                style={[styles.langPill, isSelected && styles.langPillSelected]}
+                onPress={() => prefs.setDefaultLanguage(code)}
+              >
+                <Text style={[styles.langText, isSelected && styles.langTextSelected]}>
+                  {label}
                 </Text>
               </TouchableOpacity>
             );
@@ -319,6 +344,25 @@ const styles = StyleSheet.create({
   },
   speedValueSelected: {
     color: colors.tealLight,
+  },
+  langPill: {
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.pill,
+    backgroundColor: colors.surfaceElevated,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  langPillSelected: {
+    backgroundColor: colors.accentMuted,
+    borderColor: colors.accent,
+  },
+  langText: {
+    ...typography.labelLarge,
+    color: colors.textSecondary,
+  },
+  langTextSelected: {
+    color: colors.accentLight,
   },
   aboutText: {
     ...typography.labelMedium,

@@ -3,7 +3,7 @@ import * as path from "path";
 import { execSync } from "child_process";
 import { config } from "dotenv";
 import OpenAI from "openai";
-import { MEDITATION_SYSTEM_PROMPT, WORDS_PER_MINUTE } from "../src/shared/prompts/meditation-system-prompt";
+import { MEDITATION_SYSTEM_PROMPT, WORDS_PER_MINUTE, TTS_VOICE_INSTRUCTIONS } from "../src/shared/prompts/meditation-system-prompt";
 
 config({ path: path.resolve(__dirname, "../.env") });
 
@@ -306,7 +306,7 @@ async function generateTTS(client: OpenAI, text: string, voice: string, speed: n
       model: "gpt-4o-mini-tts",
       input: text,
       voice: voice as any,
-      instructions: "Speak in a slow, gentle, and deeply calming voice, as if guiding someone through a peaceful meditation. Your tone should be warm, soft, and reassuring — like a whisper that carries. Pause naturally between phrases and sentences, allowing space for the listener to breathe and absorb each word. Avoid any sense of urgency or energy. Let your voice flow like a quiet stream — unhurried, steady, and soothing. Breathe naturally between sentences. Do not sound robotic or monotone — let gentle warmth and subtle emotion come through naturally.",
+      instructions: TTS_VOICE_INSTRUCTIONS,
       response_format: "mp3",
       speed,
       ...(language ? { language } : {}),

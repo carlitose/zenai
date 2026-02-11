@@ -34,10 +34,12 @@ export class GenerateMeditationUseCase {
     const speedPref = await this.storage.getPreference('defaultSpeed');
     const speed = input.speed ?? (speedPref ? parseFloat(speedPref) : 0.9);
 
+    const language = input.language && input.language !== 'auto' ? input.language : undefined;
+
     // 1. Generate text
     onProgress?.({ phase: 'generating_text' });
     const generatedText = await this.generator.generateText(
-      { prompt: input.prompt, type: input.type, durationMinutes: input.durationMinutes },
+      { prompt: input.prompt, durationMinutes: input.durationMinutes },
       apiKey,
     );
 
@@ -53,7 +55,7 @@ export class GenerateMeditationUseCase {
       if (segment.type === 'speech') {
         speechIndex++;
         onProgress?.({ phase: 'generating_audio', current: speechIndex, total: totalSpeech });
-        const audioPath = await this.generator.generateSegmentAudio(segment.content, voice, apiKey, speed);
+        const audioPath = await this.generator.generateSegmentAudio(segment.content, voice, apiKey, speed, language);
         segment.audioFilePath = audioPath;
       }
     }

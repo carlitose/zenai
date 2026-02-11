@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -8,8 +8,10 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
+import { CompositeNavigationProp } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import Animated, {
@@ -28,24 +30,54 @@ import { durations } from '../theme/animations';
 import { PromptInput } from '../components/PromptInput';
 import { QuickOptions } from '../components/QuickOptions';
 import { usePreferences } from '../hooks/usePreferences';
-import { RootStackParamList } from '../navigation/types';
+import { RootStackParamList, TabParamList } from '../navigation/types';
 import { VoiceOptions, VoiceOptionLabels, VoiceDescriptors, VoiceOption } from '../../domain/value-objects/VoiceOption';
+import { MeditationTypeDefaultPrompts, MeditationType } from '../../domain/value-objects/MeditationType';
+import { Languages } from '../../domain/value-objects/Language';
 
-type Nav = NativeStackNavigationProp<RootStackParamList>;
+type Nav = CompositeNavigationProp<
+  BottomTabNavigationProp<TabParamList>,
+  NativeStackNavigationProp<RootStackParamList>
+>;
 
 export function HomeScreen() {
   const navigation = useNavigation<Nav>();
   const insets = useSafeAreaInsets();
-  const { apiKey, defaultDuration, defaultVoice, defaultSpeed } = usePreferences();
-  const [prompt, setPrompt] = useState('');
+  const { apiKey, defaultDuration, defaultVoice, defaultSpeed, defaultLanguage, reload } = usePreferences();
+
+  useFocusEffect(
+    useCallback(() => {
+      reload();
+    }, [reload])
+  );
+  const [prompt, setPrompt] = useState(MeditationTypeDefaultPrompts.guided);
   const [type, setType] = useState<string | undefined>('guided');
   const [duration, setDuration] = useState(defaultDuration);
   const [voice, setVoice] = useState<string | undefined>(undefined);
   const [speed, setSpeed] = useState(defaultSpeed);
+  const [language, setLanguage] = useState<string>('auto');
+
+  const defaultPrompts = Object.values(MeditationTypeDefaultPrompts);
+
+  const handleTypeChange = (newType: string) => {
+    setType(newType);
+    const isDefaultOrEmpty = prompt.trim() === '' || defaultPrompts.includes(prompt);
+    if (isDefaultOrEmpty) {
+      setPrompt(MeditationTypeDefaultPrompts[newType as MeditationType] ?? '');
+    }
+  };
 
   useEffect(() => {
     setSpeed(defaultSpeed);
   }, [defaultSpeed]);
+
+  useEffect(() => {
+    setDuration(defaultDuration);
+  }, [defaultDuration]);
+
+  useEffect(() => {
+    setLanguage(defaultLanguage);
+  }, [defaultLanguage]);
 
   const canGenerate = prompt.trim().length > 0 && apiKey.length > 0;
 
@@ -81,6 +113,7 @@ export function HomeScreen() {
       durationMinutes: duration,
       voice,
       speed,
+      language: language !== 'auto' ? language : undefined,
     });
   };
 
@@ -99,7 +132,7 @@ export function HomeScreen() {
         {!apiKey && (
           <TouchableOpacity
             style={styles.banner}
-            onPress={() => navigation.getParent()?.navigate('Settings')}
+            onPress={() => navigation.navigate('Settings')}
           >
             <View style={styles.bannerBorder} />
             <Text style={styles.bannerText}>
@@ -116,7 +149,7 @@ export function HomeScreen() {
         <QuickOptions
           selectedType={type}
           selectedDuration={duration}
-          onTypeChange={setType}
+          onTypeChange={handleTypeChange}
           onDurationChange={setDuration}
         />
 
@@ -155,6 +188,34 @@ export function HomeScreen() {
                   </Text>
                   <Text style={[styles.voiceChipSub, isSelected && styles.voiceChipSubSelected]}>
                     {VoiceDescriptors[v]}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        </View>
+
+        {/* Language Selector */}
+        <View style={styles.selectorSection}>
+          <View style={styles.selectorHeader}>
+            <Ionicons name="globe-outline" size={16} color={colors.accent} />
+            <Text style={styles.selectorLabel}>Language</Text>
+          </View>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.chipRow}
+          >
+            {Languages.map(({ code, label }) => {
+              const isSelected = language === code;
+              return (
+                <TouchableOpacity
+                  key={code}
+                  style={[styles.langChip, isSelected && styles.langChipSelected]}
+                  onPress={() => setLanguage(code)}
+                >
+                  <Text style={[styles.langChipText, isSelected && styles.langChipTextSelected]}>
+                    {label}
                   </Text>
                 </TouchableOpacity>
               );
@@ -288,6 +349,26 @@ const styles = StyleSheet.create({
   },
   voiceChipSubSelected: {
     color: colors.terracottaLight,
+  },
+  langChip: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.pill,
+    backgroundColor: colors.surfaceElevated,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+  },
+  langChipSelected: {
+    backgroundColor: colors.accentMuted,
+    borderColor: colors.accent,
+  },
+  langChipText: {
+    ...typography.labelMedium,
+    color: colors.textSecondary,
+  },
+  langChipTextSelected: {
+    color: colors.accentLight,
   },
   speedRow: {
     flexDirection: 'row',

@@ -6,21 +6,24 @@ export function usePreferences() {
   const [defaultVoice, setDefaultVoiceState] = useState('nova');
   const [defaultDuration, setDefaultDurationState] = useState(10);
   const [defaultSpeed, setDefaultSpeedState] = useState(0.9);
+  const [defaultLanguage, setDefaultLanguageState] = useState('auto');
   const [isLoading, setIsLoading] = useState(true);
 
   const load = useCallback(async () => {
     setIsLoading(true);
     try {
-      const [key, voice, duration, speed] = await Promise.all([
+      const [key, voice, duration, speed, language] = await Promise.all([
         container.managePreferences.getApiKey(),
         container.managePreferences.getDefaultVoice(),
         container.managePreferences.getDefaultDuration(),
         container.managePreferences.getDefaultSpeed(),
+        container.managePreferences.getDefaultLanguage(),
       ]);
       setApiKeyState(key ?? '');
       setDefaultVoiceState(voice);
       setDefaultDurationState(duration);
       setDefaultSpeedState(speed);
+      setDefaultLanguageState(language);
     } finally {
       setIsLoading(false);
     }
@@ -50,16 +53,23 @@ export function usePreferences() {
     setDefaultSpeedState(speed);
   }, []);
 
+  const setDefaultLanguage = useCallback(async (language: string) => {
+    await container.managePreferences.setDefaultLanguage(language);
+    setDefaultLanguageState(language);
+  }, []);
+
   return {
     apiKey,
     defaultVoice,
     defaultDuration,
     defaultSpeed,
+    defaultLanguage,
     isLoading,
     setApiKey,
     setDefaultVoice,
     setDefaultDuration,
     setDefaultSpeed,
+    setDefaultLanguage,
     reload: load,
   };
 }

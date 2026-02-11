@@ -14,12 +14,13 @@ export function useGenerateMeditation() {
     durationMinutes?: number,
     voice?: string,
     speed?: number,
+    language?: string,
   ) => {
     try {
       setError(null);
       setPhase({ phase: 'generating_text' });
       const result = await container.generateMeditation.execute(
-        { prompt, type, durationMinutes, voice, speed },
+        { prompt, type, durationMinutes, voice, speed, language },
         setPhase,
       );
       setMeditation(result);

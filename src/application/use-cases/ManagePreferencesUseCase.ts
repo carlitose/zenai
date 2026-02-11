@@ -36,4 +36,12 @@ export class ManagePreferencesUseCase {
   async setDefaultSpeed(speed: number): Promise<void> {
     await this.storage.setPreference('defaultSpeed', speed.toString());
   }
+
+  async getDefaultLanguage(): Promise<string> {
+    return (await this.storage.getPreference('defaultLanguage')) ?? 'auto';
+  }
+
+  async setDefaultLanguage(language: string): Promise<void> {
+    await this.storage.setPreference('defaultLanguage', language);
+  }
 }
