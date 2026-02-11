@@ -31,6 +31,9 @@ export class GenerateMeditationUseCase {
       ?? (await this.storage.getPreference('defaultVoice'))
       ?? 'nova') as VoiceOption;
 
+    const speedPref = await this.storage.getPreference('defaultSpeed');
+    const speed = input.speed ?? (speedPref ? parseFloat(speedPref) : 0.9);
+
     // 1. Generate text
     onProgress?.({ phase: 'generating_text' });
     const generatedText = await this.generator.generateText(
@@ -50,7 +53,7 @@ export class GenerateMeditationUseCase {
       if (segment.type === 'speech') {
         speechIndex++;
         onProgress?.({ phase: 'generating_audio', current: speechIndex, total: totalSpeech });
-        const audioPath = await this.generator.generateSegmentAudio(segment.content, voice, apiKey);
+        const audioPath = await this.generator.generateSegmentAudio(segment.content, voice, apiKey, speed);
         segment.audioFilePath = audioPath;
       }
     }

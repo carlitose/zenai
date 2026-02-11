@@ -8,5 +8,5 @@ export interface GenerateTextInput {
 
 export interface MeditationGeneratorPort {
   generateText(input: GenerateTextInput, apiKey: string): Promise<string>;
-  generateSegmentAudio(text: string, voice: VoiceOption, apiKey: string): Promise<string>;
+  generateSegmentAudio(text: string, voice: VoiceOption, apiKey: string, speed?: number): Promise<string>;
 }

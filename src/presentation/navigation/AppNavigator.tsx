@@ -2,14 +2,14 @@ import React from 'react';
 import { NavigationContainer, DarkTheme } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { Ionicons } from '@expo/vector-icons';
-import { colors } from '../theme';
+import { colors } from '../theme/colors';
 import { RootStackParamList, TabParamList } from './types';
 import { HomeScreen } from '../screens/HomeScreen';
 import { GeneratingScreen } from '../screens/GeneratingScreen';
 import { PlayerScreen } from '../screens/PlayerScreen';
 import { HistoryScreen } from '../screens/HistoryScreen';
 import { SettingsScreen } from '../screens/SettingsScreen';
+import { TabBar } from '../components/TabBar';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator<TabParamList>();
@@ -29,47 +29,14 @@ const zenDarkTheme = {
 function MainTabs() {
   return (
     <Tab.Navigator
+      tabBar={(props) => <TabBar {...props} />}
       screenOptions={{
-        headerStyle: { backgroundColor: colors.background },
-        headerTintColor: colors.text,
-        tabBarStyle: {
-          backgroundColor: colors.surface,
-          borderTopColor: colors.border,
-        },
-        tabBarActiveTintColor: colors.accent,
-        tabBarInactiveTintColor: colors.textMuted,
+        headerShown: false,
       }}
     >
-      <Tab.Screen
-        name="Home"
-        component={HomeScreen}
-        options={{
-          title: 'ZenAI',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="leaf" size={size} color={color} />
-          ),
-        }}
-      />
-      <Tab.Screen
-        name="History"
-        component={HistoryScreen}
-        options={{
-          title: 'History',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="time" size={size} color={color} />
-          ),
-        }}
-      />
-      <Tab.Screen
-        name="Settings"
-        component={SettingsScreen}
-        options={{
-          title: 'Settings',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="settings" size={size} color={color} />
-          ),
-        }}
-      />
+      <Tab.Screen name="Create" component={HomeScreen} />
+      <Tab.Screen name="Library" component={HistoryScreen} />
+      <Tab.Screen name="Settings" component={SettingsScreen} />
     </Tab.Navigator>
   );
 }
@@ -80,19 +47,25 @@ export function AppNavigator() {
       <Stack.Navigator
         screenOptions={{
           headerShown: false,
-          animation: 'slide_from_bottom',
         }}
       >
         <Stack.Screen name="MainTabs" component={MainTabs} />
         <Stack.Screen
           name="Generating"
           component={GeneratingScreen}
-          options={{ presentation: 'fullScreenModal', gestureEnabled: false }}
+          options={{
+            presentation: 'fullScreenModal',
+            gestureEnabled: false,
+            animation: 'fade_from_bottom',
+          }}
         />
         <Stack.Screen
           name="Player"
           component={PlayerScreen}
-          options={{ presentation: 'modal' }}
+          options={{
+            presentation: 'modal',
+            animation: 'slide_from_bottom',
+          }}
         />
       </Stack.Navigator>
     </NavigationContainer>

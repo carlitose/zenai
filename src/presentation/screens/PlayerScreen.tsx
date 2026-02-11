@@ -4,13 +4,18 @@ import {
   Text,
   TouchableOpacity,
   StyleSheet,
-  SafeAreaView,
   ScrollView,
 } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, spacing, typography } from '../theme';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { colors, gradients } from '../theme/colors';
+import { spacing } from '../theme/spacing';
+import { typography } from '../theme/typography';
+import { radius } from '../theme/radius';
 import { AudioPlayerControls } from '../components/AudioPlayerControls';
+import { BreathingOrb } from '../components/BreathingOrb';
 import { useAudioPlayer } from '../hooks/useAudioPlayer';
 import { RootStackParamList } from '../navigation/types';
 import { MeditationTypeLabels, MeditationType } from '../../domain/value-objects/MeditationType';
@@ -20,6 +25,7 @@ type Route = RouteProp<RootStackParamList, 'Player'>;
 export function PlayerScreen() {
   const navigation = useNavigation();
   const route = useRoute<Route>();
+  const insets = useSafeAreaInsets();
   const { meditation } = route.params;
   const player = useAudioPlayer();
 
@@ -34,20 +40,25 @@ export function PlayerScreen() {
   const typeLabel =
     MeditationTypeLabels[meditation.type as MeditationType] ?? meditation.type;
 
-  // Clean text for display: remove markers
   const cleanText = meditation.generatedText
-    .replace(/\[SILENT\s+\d+s?\]/gi, '\n~ ~ ~\n')
-    .replace(/\[DONG\]/gi, '\n~ ~ ~\n')
+    .replace(/\[SILENT\s+\d+s?\]/gi, '\n\n~ ~ ~\n\n')
+    .replace(/\[DONG\]/gi, '\n\n~ ~ ~\n\n')
     .trim();
 
   return (
-    <SafeAreaView style={styles.container}>
+    <LinearGradient
+      colors={[...gradients.player]}
+      style={[styles.container, { paddingTop: insets.top }]}
+    >
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={8}>
           <Ionicons name="chevron-down" size={28} color={colors.text} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Player</Text>
         <View style={{ width: 28 }} />
+      </View>
+
+      <View style={styles.orbContainer}>
+        <BreathingOrb size={140} isActive={player.status.isPlaying} />
       </View>
 
       <View style={styles.meta}>
@@ -66,78 +77,86 @@ export function PlayerScreen() {
         formatTime={player.formatTime}
       />
 
-      <ScrollView style={styles.textContainer} showsVerticalScrollIndicator={false}>
-        <Text style={styles.promptLabel}>Prompt</Text>
+      <ScrollView
+        style={styles.textContainer}
+        contentContainerStyle={styles.textContent}
+        showsVerticalScrollIndicator={false}
+      >
+        <Text style={styles.sectionLabel}>Your Intention</Text>
         <Text style={styles.promptText}>{meditation.prompt}</Text>
-        <Text style={styles.scriptLabel}>Script</Text>
+
+        <View style={styles.divider} />
+
+        <Text style={styles.sectionLabel}>Meditation Script</Text>
         <Text style={styles.scriptText}>{cleanText}</Text>
       </ScrollView>
-    </SafeAreaView>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: spacing.lg,
+    paddingHorizontal: spacing.xl,
     paddingVertical: spacing.md,
   },
-  headerTitle: {
-    ...typography.h3,
+  orbContainer: {
+    alignItems: 'center',
+    paddingVertical: spacing.lg,
   },
   meta: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: spacing.md,
-    marginBottom: spacing.sm,
   },
   badge: {
-    backgroundColor: colors.primary,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 2,
-    borderRadius: 10,
+    backgroundColor: colors.terracottaMuted,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    borderRadius: radius.pill,
   },
   badgeText: {
-    ...typography.small,
-    color: colors.white,
+    ...typography.labelSmall,
+    color: colors.terracotta,
     fontWeight: '600',
   },
   duration: {
-    ...typography.caption,
+    ...typography.labelMedium,
     color: colors.textSecondary,
   },
   textContainer: {
     flex: 1,
-    paddingHorizontal: spacing.lg,
+    paddingHorizontal: spacing.xl,
   },
-  promptLabel: {
-    ...typography.caption,
+  textContent: {
+    paddingBottom: spacing.huge,
+  },
+  sectionLabel: {
+    ...typography.labelMedium,
+    color: colors.textMuted,
     textTransform: 'uppercase',
-    letterSpacing: 1,
-    marginBottom: spacing.xs,
+    letterSpacing: 1.5,
+    marginBottom: spacing.sm,
   },
   promptText: {
-    ...typography.body,
+    ...typography.bodyLarge,
     color: colors.textSecondary,
     marginBottom: spacing.lg,
   },
-  scriptLabel: {
-    ...typography.caption,
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-    marginBottom: spacing.xs,
+  divider: {
+    height: 1,
+    backgroundColor: colors.border,
+    marginVertical: spacing.lg,
   },
   scriptText: {
-    ...typography.body,
+    ...typography.bodyLarge,
     color: colors.textSecondary,
-    lineHeight: 26,
-    paddingBottom: spacing.xxl,
+    lineHeight: 28,
   },
 });

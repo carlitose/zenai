@@ -3,4 +3,5 @@ export interface GenerateMeditationInput {
   type?: string;
   durationMinutes?: number;
   voice?: string;
+  speed?: number;
 }

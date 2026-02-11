@@ -5,20 +5,25 @@ import {
   FlatList,
   StyleSheet,
   RefreshControl,
+  TouchableOpacity,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, spacing, typography } from '../theme';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { colors } from '../theme/colors';
+import { spacing } from '../theme/spacing';
+import { typography } from '../theme/typography';
 import { MeditationCard } from '../components/MeditationCard';
 import { useMeditationHistory } from '../hooks/useMeditationHistory';
-import { RootStackParamList } from '../navigation/types';
+import { RootStackParamList, TabParamList } from '../navigation/types';
 import { Meditation } from '../../domain/entities/Meditation';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
 export function HistoryScreen() {
   const navigation = useNavigation<Nav>();
+  const insets = useSafeAreaInsets();
   const { meditations, isLoading, refresh, deleteMeditation } = useMeditationHistory();
 
   const handlePress = (meditation: Meditation) => {
@@ -27,16 +32,29 @@ export function HistoryScreen() {
 
   const renderEmpty = () => (
     <View style={styles.emptyContainer}>
-      <Ionicons name="leaf-outline" size={64} color={colors.textMuted} />
-      <Text style={styles.emptyTitle}>No meditations yet</Text>
+      <Ionicons name="leaf-outline" size={64} color={colors.primaryMuted} />
+      <Text style={styles.emptyTitle}>Your journey begins here</Text>
       <Text style={styles.emptySubtitle}>
-        Generate your first meditation from the Home tab.
+        Create your first meditation to see it appear in your library.
       </Text>
+      <TouchableOpacity
+        style={styles.ctaButton}
+        onPress={() => {
+          const parent = navigation.getParent();
+          if (parent) {
+            parent.navigate('Create');
+          }
+        }}
+      >
+        <Ionicons name="leaf" size={16} color={colors.textOnPrimary} style={{ marginRight: spacing.sm }} />
+        <Text style={styles.ctaText}>Create Meditation</Text>
+      </TouchableOpacity>
     </View>
   );
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { paddingTop: insets.top }]}>
+      <Text style={styles.header}>Your Meditations</Text>
       <FlatList
         data={meditations}
         keyExtractor={(item) => item.id}
@@ -69,8 +87,16 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
+  header: {
+    ...typography.displaySmall,
+    color: colors.text,
+    paddingHorizontal: spacing.xl,
+    paddingTop: spacing.lg,
+    paddingBottom: spacing.md,
+  },
   list: {
-    padding: spacing.lg,
+    padding: spacing.xl,
+    paddingTop: spacing.sm,
   },
   listEmpty: {
     flex: 1,
@@ -79,16 +105,30 @@ const styles = StyleSheet.create({
   emptyContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    padding: spacing.xl,
+    padding: spacing.xxl,
   },
   emptyTitle: {
-    ...typography.h3,
+    ...typography.displaySmall,
     color: colors.textSecondary,
-    marginTop: spacing.lg,
+    marginTop: spacing.xl,
   },
   emptySubtitle: {
-    ...typography.caption,
+    ...typography.bodyMedium,
+    color: colors.textMuted,
     textAlign: 'center',
     marginTop: spacing.sm,
+    marginBottom: spacing.xl,
+  },
+  ctaButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.primary,
+    borderRadius: 100,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.xl,
+  },
+  ctaText: {
+    ...typography.labelLarge,
+    color: colors.textOnPrimary,
   },
 });

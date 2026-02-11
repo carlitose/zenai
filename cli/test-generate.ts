@@ -70,7 +70,10 @@ const VALID_TYPES: MeditationType[] = [
   "guided", "vipassana", "sleep", "relaxation", "self_compassion", "breathing",
 ];
 
-const VALID_VOICES = ["alloy", "echo", "fable", "onyx", "nova", "shimmer"];
+const VALID_VOICES = [
+  "coral", "marin", "cedar", "sage", "ballad", "ash", "verse",
+  "alloy", "echo", "fable", "nova", "onyx", "shimmer",
+];
 
 const SYSTEM_PROMPT = `You are an expert meditation guide. Generate a meditation script.
 
@@ -152,9 +155,10 @@ function parseArgs() {
   let prompt = "";
   let type: MeditationType = "guided";
   let duration = 10;
-  let voice = "nova";
-  let speed = 0.85;
+  let voice = "coral";
+  let speed = 1;
   let audio = false;
+  let language = "";
 
   for (let i = 0; i < args.length; i++) {
     switch (args[i]) {
@@ -174,11 +178,15 @@ function parseArgs() {
         break;
       case "--voice":
       case "-v":
-        voice = VALID_VOICES.includes(args[i + 1]) ? args[++i] : "nova";
+        voice = VALID_VOICES.includes(args[i + 1]) ? args[++i] : "coral";
         break;
       case "--speed":
       case "-s":
         speed = Math.min(4.0, Math.max(0.25, parseFloat(args[++i]) || 0.85));
+        break;
+      case "--language":
+      case "-l":
+        language = args[++i] ?? "";
         break;
       case "--audio":
       case "-a":
@@ -197,7 +205,7 @@ function parseArgs() {
     }
   }
 
-  return { prompt, type, duration, voice, speed, audio };
+  return { prompt, type, duration, voice, speed, audio, language };
 }
 
 function printUsage() {
@@ -208,8 +216,9 @@ Options:
   -p, --prompt <text>     Meditation prompt (required)
   -t, --type <type>       Type: guided|vipassana|sleep|relaxation|self_compassion|breathing [guided]
   -d, --duration <min>    Duration in minutes [10]
-  -v, --voice <voice>     TTS voice: alloy|echo|fable|onyx|nova|shimmer [nova]
+  -v, --voice <voice>     TTS voice: coral|marin|cedar|sage|ballad|ash|verse|alloy|echo|fable|onyx|nova|shimmer [coral]
   -s, --speed <speed>     TTS speed: 0.25-4.0 [0.85]
+  -l, --language <lang>   TTS language: en, it, fr, etc. [auto-detect]
   -a, --audio             Generate audio files (default: text only)
   -h, --help              Show this help
 
@@ -359,15 +368,16 @@ async function generateText(
   return fullContent;
 }
 
-async function generateTTS(client: OpenAI, text: string, voice: string, speed: number): Promise<Buffer> {
+async function generateTTS(client: OpenAI, text: string, voice: string, speed: number, language: string): Promise<Buffer> {
   const response = await withRetry(
     () => client.audio.speech.create({
       model: "gpt-4o-mini-tts",
       input: text,
-      voice: voice as "alloy" | "echo" | "fable" | "onyx" | "nova" | "shimmer",
-      instructions: "Speak very slowly and calmly, like a meditation guide. Use a soothing, peaceful tone with natural pauses between phrases. Breathe naturally between sentences.",
+      voice: voice as any,
+      instructions: "Speak in a slow, gentle, and deeply calming voice, as if guiding someone through a peaceful meditation. Your tone should be warm, soft, and reassuring — like a whisper that carries. Pause naturally between phrases and sentences, allowing space for the listener to breathe and absorb each word. Avoid any sense of urgency or energy. Let your voice flow like a quiet stream — unhurried, steady, and soothing. Breathe naturally between sentences. Do not sound robotic or monotone — let gentle warmth and subtle emotion come through naturally.",
       response_format: "mp3",
       speed,
+      ...(language ? { language } : {}),
     }),
     { label: "TTS" },
   );
@@ -412,6 +422,7 @@ async function generateAudioFiles(
   segments: Segment[],
   voice: string,
   speed: number,
+  language: string,
 ): Promise<string> {
   const outputDir = path.resolve(__dirname, "output");
   fs.mkdirSync(outputDir, { recursive: true });
@@ -433,7 +444,7 @@ async function generateAudioFiles(
       const dest = path.join(outputDir, name);
       const words = seg.text.split(/\s+/).length;
       console.log(c.dim(`  [${i + 1}/${segments.length}] TTS speech (${words} words)...`));
-      const buf = await generateTTS(client, seg.text, voice, speed);
+      const buf = await generateTTS(client, seg.text, voice, speed, language);
       fs.writeFileSync(dest, buf);
       segmentFiles.push(dest);
     } else if (seg.type === "silence") {
@@ -465,7 +476,7 @@ async function generateAudioFiles(
 // ---------------------------------------------------------------------------
 
 async function main() {
-  const { prompt, type, duration, voice, speed, audio } = parseArgs();
+  const { prompt, type, duration, voice, speed, audio, language } = parseArgs();
 
   if (!prompt) {
     printUsage();
@@ -485,6 +496,7 @@ async function main() {
   console.log(`  Duration: ${duration} min`);
   console.log(`  Voice:    ${voice}`);
   console.log(`  Speed:    ${speed}`);
+  console.log(`  Language: ${language || "auto"}`);
   console.log(`  Audio:    ${audio ? "yes" : "no (text only)"}`);
   const client = createOpenAIClient(apiKey);
 
@@ -500,7 +512,7 @@ async function main() {
 
   if (audio) {
     console.log(c.dim("\nGenerating audio files...\n"));
-    const finalFile = await generateAudioFiles(client, segments, voice, speed);
+    const finalFile = await generateAudioFiles(client, segments, voice, speed, language);
     console.log(c.bold("\n--- Generated File ---"));
     console.log(`  ${path.relative(process.cwd(), finalFile)}`);
     console.log(c.green(`\nDone! Single meditation file created.`));

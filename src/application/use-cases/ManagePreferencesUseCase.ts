@@ -27,4 +27,13 @@ export class ManagePreferencesUseCase {
   async setDefaultDuration(minutes: number): Promise<void> {
     await this.storage.setPreference('defaultDuration', minutes.toString());
   }
+
+  async getDefaultSpeed(): Promise<number> {
+    const val = await this.storage.getPreference('defaultSpeed');
+    return val ? parseFloat(val) : 0.9;
+  }
+
+  async setDefaultSpeed(speed: number): Promise<void> {
+    await this.storage.setPreference('defaultSpeed', speed.toString());
+  }
 }
