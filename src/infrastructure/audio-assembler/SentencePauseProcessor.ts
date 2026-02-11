@@ -10,11 +10,11 @@ export interface SentencePauseConfig {
 }
 
 const DEFAULT_CONFIG: SentencePauseConfig = {
-  periodPause: 1.5,
-  ellipsisPause: 2.0,
-  questionPause: 1.5,
-  exclamationPause: 1.2,
-  sentencesPerBatch: 3,
+  periodPause: 2.0,
+  ellipsisPause: 2.5,
+  questionPause: 2.0,
+  exclamationPause: 1.5,
+  sentencesPerBatch: 2,
   minWordsForPause: 3,
 };
 

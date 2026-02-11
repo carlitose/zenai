@@ -83,38 +83,61 @@ DONG RULES (STRICT - NO EXCEPTIONS):
 
 STRUCTURE (MANDATORY):
 [DONG]
+[SILENT 3s]
 [DONG]
+[SILENT 3s]
 [DONG]
-[Voice guides breathing: "Take a deep breath in... and slowly exhale..."]
 [SILENT 5s]
-[Voice: "Another deep breath... filling your lungs... and release..."]
-[SILENT 5s]
-[Voice: "One more breath... inhale deeply... and let go..."]
+Take a deep breath in...
+[SILENT 8s]
+And slowly exhale...
+[SILENT 8s]
+Another deep breath... filling your lungs completely...
+[SILENT 8s]
+And gently release...
+[SILENT 8s]
+One more breath... inhale deeply...
 [SILENT 10s]
-... main meditation content with silences ...
-[Voice: closing words...]
+And let everything go...
+[SILENT 3s]
+(main meditation content with [SILENT 2-3s] after each sentence)
+[SILENT 3s]
+(closing sentence)
+[SILENT 3s]
 [DONG]
+[SILENT 3s]
 [DONG]
+[SILENT 3s]
 [DONG]
 
 DURATION RULES (CRITICAL - USE REASONING TO CALCULATE):
-1. Calculate the exact word count needed: (target_minutes - silence_minutes - 0.25) * 130
-2. Calculate total silence needed: at least 30% of target duration
-3. For 10 min: ~850 words speech + ~180s total silence + 15s DONGs
-4. For 5 min: ~400 words speech + ~90s total silence + 15s DONGs
-5. For 15 min: ~1200 words speech + ~270s total silence + 15s DONGs
-6. VERIFY your word count matches the calculation before outputting
+1. Calculate word count: (target_minutes - silence_minutes - 0.25) * 130
+2. Total silence: at least 25% of target duration
+3. For 10 min: ~900 words speech + ~150s silence + 15s DONGs
+4. For 5 min: ~425 words speech + ~75s silence + 15s DONGs
+5. For 15 min: ~1300 words speech + ~230s silence + 15s DONGs
+6. VERIFY word count before outputting
+7. Most silence will be micro-pauses (2-3s). Plan for ~25-40 silence markers in a 10-min meditation.
 
-SILENCE DISTRIBUTION:
-- Short (5-10s): between phrases, after questions
-- Medium (15-30s): breathing exercises, body awareness
-- Long (30-60s): deep observation, body scan sections
-- A 10-minute meditation needs AT LEAST 150s of total silence
+SILENCE DISTRIBUTION (STRICT - MAX 15s):
+- Micro (2-3s): after EVERY 1-2 sentences. No speech block may exceed 2 sentences without a [SILENT] marker.
+- Short (5s): after questions, topic transitions
+- Medium (8-15s): breathing exercises, body awareness pauses
+- MAXIMUM silence is [SILENT 15s]. NEVER exceed 15.
+- A 10-minute meditation needs AT LEAST 120s of total silence
+
+PACING RULES (CRITICAL):
+- After every sentence ending with "." insert [SILENT 3s]
+- After sentences ending with ";" insert [SILENT 2s]
+- Use commas and ellipses ("...") for gentle pacing within sentences — the TTS voice pauses naturally at these. Do NOT add [SILENT] markers at commas.
+- NEVER write more than 2 consecutive sentences without a [SILENT] marker
+- The script should feel like a slow, spacious conversation — not a lecture
 
 FORMATTING:
 - Write ONLY the meditation script, no meta-commentary
 - [SILENT Xs] markers on their own line
 - [DONG] markers on their own line
+- Each spoken sentence should be followed by a [SILENT] marker on the next line
 - Respond in the same language as the user's prompt`;
 
 const DONG_DURATION_S = 2.5;

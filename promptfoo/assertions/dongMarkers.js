@@ -3,8 +3,8 @@
  *
  * Rules (from CLI prompt):
  *   - Exactly 6 [DONG] markers total
- *   - First 3 non-empty lines must be [DONG]
- *   - Last 3 non-empty lines must be [DONG]
+ *   - First 3 DONGs within first 6 non-empty lines (allows interleaved [SILENT])
+ *   - Last 3 DONGs within last 6 non-empty lines (allows interleaved [SILENT])
  */
 module.exports = (output, context) => {
   const dongRegex = /\[DONG\]/gi;
@@ -16,13 +16,15 @@ module.exports = (output, context) => {
     .map((l) => l.trim())
     .filter((l) => l.length > 0);
 
-  // Check first 3 non-empty lines
-  const first3 = lines.slice(0, 3);
-  const first3AreDong = first3.every((l) => /^\[DONG\]$/i.test(l));
+  // Check first 3 DONGs are within the first 6 non-empty lines (allows interleaved silences)
+  const first6 = lines.slice(0, 6);
+  const openingDongs = first6.filter((l) => /^\[DONG\]$/i.test(l));
+  const first3AreDong = openingDongs.length === 3;
 
-  // Check last 3 non-empty lines
-  const last3 = lines.slice(-3);
-  const last3AreDong = last3.every((l) => /^\[DONG\]$/i.test(l));
+  // Check last 3 DONGs are within the last 6 non-empty lines
+  const last6 = lines.slice(-6);
+  const closingDongs = last6.filter((l) => /^\[DONG\]$/i.test(l));
+  const last3AreDong = closingDongs.length === 3;
 
   const reasons = [];
 
@@ -31,12 +33,12 @@ module.exports = (output, context) => {
   }
   if (!first3AreDong) {
     reasons.push(
-      `First 3 non-empty lines must be [DONG], got: ${JSON.stringify(first3)}`,
+      `Expected 3 [DONG] within first 6 non-empty lines, found ${openingDongs.length} in: ${JSON.stringify(first6)}`,
     );
   }
   if (!last3AreDong) {
     reasons.push(
-      `Last 3 non-empty lines must be [DONG], got: ${JSON.stringify(last3)}`,
+      `Expected 3 [DONG] within last 6 non-empty lines, found ${closingDongs.length} in: ${JSON.stringify(last6)}`,
     );
   }
 

@@ -8,7 +8,7 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "gen_meditation": "tsx cli/test-generate.ts",
-    "eval": "npx promptfoo eval -c promptfoo/promptfooconfig.yaml -j 2",
+    "eval": "npx promptfoo eval -c promptfoo/promptfooconfig.yaml -j 2 --env-file .env",
     "eval:view": "npx promptfoo view"
   },
   "dependencies": {

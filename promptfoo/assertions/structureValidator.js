@@ -3,7 +3,7 @@
  *
  * Checks:
  *   1. 3 DONGs at start → guided breathing → silences → content → 3 DONGs at end
- *   2. At least 5 lines of spoken content
+ *   2. At least 10 lines of spoken content
  *   3. Silences are distributed (not all grouped together)
  *   4. Markers are on their own lines
  */
@@ -39,9 +39,9 @@ module.exports = (output) => {
     (l) => !/^\[DONG\]$/i.test(l.text) && !/^\[SILENT\s+\d+\s*s?\]$/i.test(l.text),
   );
 
-  if (spokenLines.length < 5) {
+  if (spokenLines.length < 10) {
     issues.push(
-      `Only ${spokenLines.length} spoken content lines (need >= 5)`,
+      `Only ${spokenLines.length} spoken content lines (need >= 10)`,
     );
     score -= 0.25;
   }
@@ -55,21 +55,19 @@ module.exports = (output) => {
     const openingDongs = dongIndices.slice(0, 3);
     const closingDongs = dongIndices.slice(-3);
 
-    // Opening DONGs should be the first 3 non-empty lines
-    const expectedOpenPositions = [0, 1, 2];
-    const openingCorrect = openingDongs.every((d, i) => d === expectedOpenPositions[i]);
+    // Opening DONGs should all be within first 6 non-empty lines (allows interleaved [SILENT])
+    const openingCorrect = openingDongs.every((d) => d < 6);
 
-    // Closing DONGs should be the last 3 non-empty lines
+    // Closing DONGs should all be within last 6 non-empty lines
     const totalNonEmpty = nonEmptyLines.length;
-    const expectedClosePositions = [totalNonEmpty - 3, totalNonEmpty - 2, totalNonEmpty - 1];
-    const closingCorrect = closingDongs.every((d, i) => d === expectedClosePositions[i]);
+    const closingCorrect = closingDongs.every((d) => d >= totalNonEmpty - 6);
 
     if (!openingCorrect) {
-      issues.push('Opening 3 DONGs are not the first 3 non-empty lines');
+      issues.push('Opening 3 DONGs are not within the first 6 non-empty lines');
       score -= 0.2;
     }
     if (!closingCorrect) {
-      issues.push('Closing 3 DONGs are not the last 3 non-empty lines');
+      issues.push('Closing 3 DONGs are not within the last 6 non-empty lines');
       score -= 0.2;
     }
 
@@ -86,10 +84,10 @@ module.exports = (output) => {
     .map((l, i) => (/^\[SILENT\s+\d+\s*s?\]$/i.test(l.text) ? i : -1))
     .filter((i) => i >= 0);
 
-  if (silenceIndices.length >= 3) {
+  if (silenceIndices.length >= 3 && dongIndices.length >= 6) {
     // Check if silences are spread across at least 3 different "zones" (thirds of the content)
-    const contentStart = 3; // after opening DONGs
-    const contentEnd = nonEmptyLines.length - 3; // before closing DONGs
+    const contentStart = dongIndices[2] + 1; // after 3rd opening DONG
+    const contentEnd = dongIndices[dongIndices.length - 3]; // before 1st closing DONG
     const contentLength = contentEnd - contentStart;
 
     if (contentLength > 0) {

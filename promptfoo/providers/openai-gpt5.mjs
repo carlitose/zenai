@@ -21,28 +21,34 @@ function getClient() {
  * 5-minute timeout (REQUEST_TIMEOUT_MS) that cannot be overridden via
  * config or env vars — a known bug in promptfoo ≤0.120.x.
  *
- * @param {string} prompt - JSON-encoded messages array from the prompt file
- * @param {object} context - { vars, provider, config }
- * @returns {{ output: string, tokenUsage: object }}
+ * Exported as a class per promptfoo custom provider API:
+ *   - id()       → provider identifier
+ *   - callApi()  → sends prompt to GPT-5.2 and returns response
  */
-export default async function callApi(prompt, context) {
-  const messages = JSON.parse(prompt);
+export default class GPT5Provider {
+  id() {
+    return "openai:gpt-5.2";
+  }
 
-  const response = await getClient().chat.completions.create({
-    model: "gpt-5.2",
-    messages,
-    reasoning_effort: "medium",
-    max_completion_tokens: 16384,
-  });
+  async callApi(prompt, context) {
+    const messages = JSON.parse(prompt);
 
-  const choice = response.choices[0];
+    const response = await getClient().chat.completions.create({
+      model: "gpt-5.2",
+      messages,
+      reasoning_effort: "medium",
+      max_completion_tokens: 16384,
+    });
 
-  return {
-    output: choice.message.content,
-    tokenUsage: {
-      total: response.usage?.total_tokens ?? 0,
-      prompt: response.usage?.prompt_tokens ?? 0,
-      completion: response.usage?.completion_tokens ?? 0,
-    },
-  };
+    const choice = response.choices[0];
+
+    return {
+      output: choice.message.content,
+      tokenUsage: {
+        total: response.usage?.total_tokens ?? 0,
+        prompt: response.usage?.prompt_tokens ?? 0,
+        completion: response.usage?.completion_tokens ?? 0,
+      },
+    };
+  }
 }

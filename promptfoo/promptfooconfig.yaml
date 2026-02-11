@@ -4,7 +4,11 @@ prompts:
   - file://prompts/meditation-system.json
 
 providers:
-  - id: file://providers/openai-gpt5.mjs
+  - id: openai:chat:gpt-5.2
+    config:
+      reasoning:
+        effort: medium
+      max_completion_tokens: 16384
 
 defaultTest:
   assert:
