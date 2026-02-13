@@ -1,5 +1,10 @@
 export const WORDS_PER_MINUTE = 130;
 
+// --- Configurazione generazione testo (condivisa tra CLI e app) ---
+export const TEXT_GENERATION_MODEL = 'gpt-5.2';
+export const TEXT_GENERATION_REASONING = { effort: 'medium' } as const;
+export const TEXT_GENERATION_MAX_OUTPUT_TOKENS = 16384;
+
 export const TTS_VOICE_INSTRUCTIONS = [
   'Delivery: Slow and spacious, with natural pauses between phrases and sentences, allowing the listener to breathe and absorb each word.',
   'Voice: Warm, soft, and reassuring, like a gentle whisper that carries — unhurried, steady, and deeply calming.',
@@ -74,3 +79,18 @@ FORMATTING:
 - [DONG] markers on their own line
 - Each spoken sentence should be followed by a [SILENT] marker on the next line
 - Respond ENTIRELY in the same language as the user's prompt. Translate ALL content including the breathing intro. Never mix languages.`;
+
+export function buildUserPrompt(input: {
+  prompt: string;
+  type?: string;
+  durationMinutes?: number;
+  language?: string;
+}): string {
+  const parts: string[] = [];
+  if (input.type) parts.push(`Meditation type: ${input.type}`);
+  if (input.durationMinutes) parts.push(`Target duration: ${input.durationMinutes} minutes`);
+  if (input.language) parts.push(`Language: ${input.language}`);
+  parts.push('');
+  parts.push(input.prompt);
+  return parts.join('\n');
+}

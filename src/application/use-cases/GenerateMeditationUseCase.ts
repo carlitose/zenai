@@ -39,7 +39,7 @@ export class GenerateMeditationUseCase {
     // 1. Generate text
     onProgress?.({ phase: 'generating_text' });
     const generatedText = await this.generator.generateText(
-      { prompt: input.prompt, durationMinutes: input.durationMinutes },
+      { prompt: input.prompt, type: input.type, durationMinutes: input.durationMinutes, language },
       apiKey,
     );
 

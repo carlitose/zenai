@@ -1,4 +1,9 @@
 import OpenAI from "openai";
+import { register } from "tsx/esm/api";
+
+const unregister = register();
+const { TEXT_GENERATION_MODEL, TEXT_GENERATION_REASONING, TEXT_GENERATION_MAX_OUTPUT_TOKENS } = await import("../../src/shared/prompts/meditation-system-prompt.ts");
+unregister();
 
 const TIMEOUT_MS = 3_600_000; // 1 hour
 
@@ -27,17 +32,17 @@ function getClient() {
  */
 export default class GPT5Provider {
   id() {
-    return "openai:gpt-5.2";
+    return `openai:${TEXT_GENERATION_MODEL}`;
   }
 
   async callApi(prompt, context) {
     const messages = JSON.parse(prompt);
 
     const response = await getClient().chat.completions.create({
-      model: "gpt-5.2",
+      model: TEXT_GENERATION_MODEL,
       messages,
-      reasoning_effort: "medium",
-      max_completion_tokens: 16384,
+      reasoning_effort: TEXT_GENERATION_REASONING.effort,
+      max_completion_tokens: TEXT_GENERATION_MAX_OUTPUT_TOKENS,
     });
 
     const choice = response.choices[0];

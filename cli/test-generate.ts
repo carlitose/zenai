@@ -3,7 +3,7 @@ import * as path from "path";
 import { execSync } from "child_process";
 import { config } from "dotenv";
 import OpenAI from "openai";
-import { MEDITATION_SYSTEM_PROMPT, WORDS_PER_MINUTE, TTS_VOICE_INSTRUCTIONS } from "../src/shared/prompts/meditation-system-prompt";
+import { MEDITATION_SYSTEM_PROMPT, WORDS_PER_MINUTE, TTS_VOICE_INSTRUCTIONS, TEXT_GENERATION_MODEL, TEXT_GENERATION_REASONING, TEXT_GENERATION_MAX_OUTPUT_TOKENS, buildUserPrompt } from "../src/shared/prompts/meditation-system-prompt";
 
 config({ path: path.resolve(__dirname, "../.env") });
 
@@ -273,16 +273,22 @@ async function generateText(
   prompt: string,
   type: MeditationType,
   durationMinutes: number,
+  language: string,
 ): Promise<string> {
-  const userPrompt = `Meditation type: ${type}\nTarget duration: ${durationMinutes} minutes\n\n${prompt}`;
+  const userPrompt = buildUserPrompt({
+    prompt,
+    type,
+    durationMinutes,
+    language: language || undefined,
+  });
 
   const stream = await withRetry(
     () => client.responses.create({
-      model: "gpt-5.2",
+      model: TEXT_GENERATION_MODEL,
       instructions: MEDITATION_SYSTEM_PROMPT,
       input: [{ role: "user", content: userPrompt }],
-      reasoning: { effort: "medium" },
-      max_output_tokens: 16384,
+      reasoning: TEXT_GENERATION_REASONING,
+      max_output_tokens: TEXT_GENERATION_MAX_OUTPUT_TOKENS,
       stream: true,
     }),
     { label: "Text generation" },
@@ -434,7 +440,7 @@ async function main() {
 
   console.log(c.dim("\nGenerating text with GPT-5.2 (Responses API + reasoning)...\n"));
 
-  const text = await generateText(client, prompt, type, duration);
+  const text = await generateText(client, prompt, type, duration, language);
 
   console.log(c.bold("--- Meditation Script ---\n"));
   printColoredText(text);

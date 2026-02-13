@@ -1,7 +1,7 @@
 const { register } = require('tsx/cjs/api');
 
 const unregister = register();
-const { MEDITATION_SYSTEM_PROMPT } = require('../../src/shared/prompts/meditation-system-prompt');
+const { MEDITATION_SYSTEM_PROMPT, buildUserPrompt } = require('../../src/shared/prompts/meditation-system-prompt');
 unregister();
 
 module.exports = function ({ vars }) {
@@ -9,7 +9,12 @@ module.exports = function ({ vars }) {
     { role: 'system', content: MEDITATION_SYSTEM_PROMPT },
     {
       role: 'user',
-      content: `Meditation type: ${vars.type}\nTarget duration: ${vars.duration} minutes\n\n${vars.prompt}`,
+      content: buildUserPrompt({
+        prompt: vars.prompt,
+        type: vars.type,
+        durationMinutes: parseInt(vars.duration, 10),
+        language: vars.language,
+      }),
     },
   ]);
 };

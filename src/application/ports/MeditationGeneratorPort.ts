@@ -2,7 +2,9 @@ import { VoiceOption } from '../../domain/value-objects/VoiceOption';
 
 export interface GenerateTextInput {
   prompt: string;
+  type?: string;
   durationMinutes?: number;
+  language?: string;
 }
 
 export interface MeditationGeneratorPort {

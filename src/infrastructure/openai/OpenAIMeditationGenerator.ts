@@ -1,39 +1,72 @@
 import { MeditationGeneratorPort, GenerateTextInput } from '../../application/ports/MeditationGeneratorPort';
 import { VoiceOption } from '../../domain/value-objects/VoiceOption';
 import { File, Directory, Paths } from 'expo-file-system';
-import { MEDITATION_SYSTEM_PROMPT, TTS_VOICE_INSTRUCTIONS } from '../../shared/prompts/meditation-system-prompt';
+import { MEDITATION_SYSTEM_PROMPT, TTS_VOICE_INSTRUCTIONS, TEXT_GENERATION_MODEL, TEXT_GENERATION_REASONING, TEXT_GENERATION_MAX_OUTPUT_TOKENS, buildUserPrompt } from '../../shared/prompts/meditation-system-prompt';
 
 export class OpenAIMeditationGenerator implements MeditationGeneratorPort {
   async generateText(input: GenerateTextInput, apiKey: string): Promise<string> {
-    const userPrompt = this.buildUserPrompt(input);
+    const userPrompt = buildUserPrompt(input);
 
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: [
-          { role: 'system', content: MEDITATION_SYSTEM_PROMPT },
-          { role: 'user', content: userPrompt },
-        ],
-        temperature: 0.8,
-        max_tokens: 8000,
-      }),
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', 'https://api.openai.com/v1/responses');
+      xhr.setRequestHeader('Content-Type', 'application/json');
+      xhr.setRequestHeader('Authorization', `Bearer ${apiKey}`);
+
+      let lastIndex = 0;
+      let fullContent = '';
+      let buffer = '';
+
+      xhr.onreadystatechange = () => {
+        if (xhr.readyState >= 3 && xhr.status === 200) {
+          const newData = xhr.responseText.substring(lastIndex);
+          lastIndex = xhr.responseText.length;
+
+          const combined = buffer + newData;
+          const lines = combined.split('\n');
+          buffer = lines.pop()!;
+          for (const line of lines) {
+            if (!line.startsWith('data: ')) continue;
+            const data = line.slice(6);
+            if (data === '[DONE]') continue;
+            try {
+              const event = JSON.parse(data);
+              if (event.type === 'response.output_text.delta') {
+                fullContent += event.delta;
+              }
+            } catch {}
+          }
+        }
+
+        if (xhr.readyState === 4) {
+          if (xhr.status === 200) {
+            resolve(fullContent);
+          } else if (xhr.status === 401) {
+            reject(new Error('API_KEY_INVALID'));
+          } else if (xhr.status === 429) {
+            reject(new Error('RATE_LIMIT'));
+          } else {
+            let message = xhr.statusText;
+            try {
+              const err = JSON.parse(xhr.responseText);
+              message = err?.error?.message ?? message;
+            } catch {}
+            reject(new Error(`OPENAI_TEXT_ERROR: ${message}`));
+          }
+        }
+      };
+
+      xhr.onerror = () => reject(new Error('OPENAI_TEXT_ERROR: Network error'));
+
+      xhr.send(JSON.stringify({
+        model: TEXT_GENERATION_MODEL,
+        instructions: MEDITATION_SYSTEM_PROMPT,
+        input: [{ role: 'user', content: userPrompt }],
+        reasoning: TEXT_GENERATION_REASONING,
+        max_output_tokens: TEXT_GENERATION_MAX_OUTPUT_TOKENS,
+        stream: true,
+      }));
     });
-
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({}));
-      const message = (error as any)?.error?.message ?? response.statusText;
-      if (response.status === 401) throw new Error('API_KEY_INVALID');
-      if (response.status === 429) throw new Error('RATE_LIMIT');
-      throw new Error(`OPENAI_TEXT_ERROR: ${message}`);
-    }
-
-    const data = await response.json();
-    return (data as any).choices[0].message.content;
   }
 
   async generateSegmentAudio(text: string, voice: VoiceOption, apiKey: string, speed: number = 0.9, language?: string): Promise<string> {
@@ -109,11 +142,5 @@ export class OpenAIMeditationGenerator implements MeditationGeneratorPort {
     file.write(bytes);
 
     return file.uri;
-  }
-
-  private buildUserPrompt(input: GenerateTextInput): string {
-    let prompt = input.prompt;
-    if (input.durationMinutes) prompt += `\nTarget total duration: ${input.durationMinutes} minutes`;
-    return prompt;
   }
 }

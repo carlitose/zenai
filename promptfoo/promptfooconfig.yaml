@@ -34,6 +34,7 @@ tests:
     vars:
       type: guided
       duration: "5"
+      language: it
       prompt: "Rilassamento dopo una giornata stressante"
     assert:
       - type: icontains
@@ -45,6 +46,7 @@ tests:
     vars:
       type: vipassana
       duration: "10"
+      language: it
       prompt: "Attenzione al corpo e alle sensazioni fisiche"
     assert:
       - type: icontains
@@ -56,6 +58,7 @@ tests:
     vars:
       type: sleep
       duration: "15"
+      language: it
       prompt: "Aiutami a dormire profondamente"
     assert:
       - type: icontains
@@ -65,6 +68,7 @@ tests:
     vars:
       type: relaxation
       duration: "20"
+      language: it
       prompt: "Rilassamento muscolare progressivo"
     assert:
       - type: icontains
@@ -74,6 +78,7 @@ tests:
     vars:
       type: self_compassion
       duration: "10"
+      language: it
       prompt: "Auto-compassione e gentilezza verso me stesso"
     assert:
       - type: icontains
@@ -83,6 +88,7 @@ tests:
     vars:
       type: breathing
       duration: "5"
+      language: it
       prompt: "Respirazione consapevole e calma"
     assert:
       - type: icontains
@@ -94,6 +100,7 @@ tests:
     vars:
       type: guided
       duration: "5"
+      language: en
       prompt: "Morning positive intentions to start the day"
     assert:
       - type: icontains
@@ -105,6 +112,7 @@ tests:
     vars:
       type: vipassana
       duration: "10"
+      language: en
       prompt: "Breath awareness and present moment meditation"
     assert:
       - type: icontains
@@ -114,6 +122,7 @@ tests:
     vars:
       type: sleep
       duration: "15"
+      language: en
       prompt: "Body scan for deep sleep"
     assert:
       - type: icontains
@@ -123,6 +132,7 @@ tests:
     vars:
       type: relaxation
       duration: "20"
+      language: en
       prompt: "Progressive muscle release and relaxation"
     assert:
       - type: icontains
@@ -132,6 +142,7 @@ tests:
     vars:
       type: self_compassion
       duration: "10"
+      language: en
       prompt: "Loving kindness meditation for self-compassion"
     assert:
       - type: icontains
@@ -141,6 +152,7 @@ tests:
     vars:
       type: breathing
       duration: "5"
+      language: en
       prompt: "Box breathing exercise for calm and focus"
     assert:
       - type: icontains
