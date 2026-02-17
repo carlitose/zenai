@@ -3,7 +3,7 @@ import { MeditationGeneratorPort } from '../ports/MeditationGeneratorPort';
 import { AudioAssemblerPort } from '../ports/AudioAssemblerPort';
 import { StoragePort } from '../ports/StoragePort';
 import { GenerateMeditationInput } from '../dto/GenerateMeditationInput';
-import { VoiceOption } from '../../domain/value-objects/VoiceOption';
+import { DEFAULT_ELEVENLABS_VOICE } from '../../domain/value-objects/ElevenLabsVoice';
 import * as Crypto from 'expo-crypto';
 import { File, Directory, Paths } from 'expo-file-system';
 
@@ -27,9 +27,18 @@ export class GenerateMeditationUseCase {
     const apiKey = await this.storage.getPreference('apiKey');
     if (!apiKey) throw new Error('API_KEY_MISSING');
 
-    const voice = (input.voice
-      ?? (await this.storage.getPreference('defaultVoice'))
-      ?? 'nova') as VoiceOption;
+    const ttsProvider = (await this.storage.getPreference('ttsProvider')) || 'openai';
+
+    let voice: string;
+    if (ttsProvider === 'elevenlabs') {
+      voice = input.voice
+        ?? (await this.storage.getPreference('defaultElevenLabsVoice'))
+        ?? DEFAULT_ELEVENLABS_VOICE;
+    } else {
+      voice = input.voice
+        ?? (await this.storage.getPreference('defaultVoice'))
+        ?? 'nova';
+    }
 
     const speedPref = await this.storage.getPreference('defaultSpeed');
     const speed = input.speed ?? (speedPref ? parseFloat(speedPref) : 0.9);
@@ -66,10 +75,10 @@ export class GenerateMeditationUseCase {
     const meditationDir = new Directory(Paths.document, 'meditations', meditationId);
     meditationDir.create({ intermediates: true });
 
-    const manifest = await this.assembler.saveSegments(segments, meditationDir.uri);
+    const { manifest } = await this.assembler.saveSegments(segments, meditationDir.uri, ttsProvider);
     const actualDuration = this.assembler.estimateDuration(segments);
 
-    // 5. Save manifest
+    // 5. Save manifest (kept for backward compatibility)
     const manifestFile = new File(meditationDir, 'segments.json');
     manifestFile.write(JSON.stringify(manifest, null, 2));
 

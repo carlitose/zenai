@@ -1,5 +1,4 @@
 import { MeditationGeneratorPort, GenerateTextInput } from '../../application/ports/MeditationGeneratorPort';
-import { VoiceOption } from '../../domain/value-objects/VoiceOption';
 import { File, Directory, Paths } from 'expo-file-system';
 import { MEDITATION_SYSTEM_PROMPT, TTS_VOICE_INSTRUCTIONS, TEXT_GENERATION_MODEL, TEXT_GENERATION_REASONING, TEXT_GENERATION_MAX_OUTPUT_TOKENS, buildUserPrompt } from '../../shared/prompts/meditation-system-prompt';
 
@@ -69,7 +68,7 @@ export class OpenAIMeditationGenerator implements MeditationGeneratorPort {
     });
   }
 
-  async generateSegmentAudio(text: string, voice: VoiceOption, apiKey: string, speed: number = 0.9, language?: string): Promise<string> {
+  async generateSegmentAudio(text: string, voice: string, apiKey: string, speed: number = 0.9, language?: string): Promise<string> {
     if (text.length > 4000) {
       return this.generateLongSegmentAudio(text, voice, apiKey, speed, language);
     }
@@ -100,7 +99,7 @@ export class OpenAIMeditationGenerator implements MeditationGeneratorPort {
 
   private async generateLongSegmentAudio(
     text: string,
-    voice: VoiceOption,
+    voice: string,
     apiKey: string,
     speed: number = 0.9,
     language?: string,

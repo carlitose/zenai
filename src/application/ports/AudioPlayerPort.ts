@@ -6,7 +6,7 @@ export interface AudioStatus {
 }
 
 export interface AudioPlayerPort {
-  loadPlaylist(segmentsJsonPath: string): Promise<void>;
+  loadPlaylist(audioFilePath: string, durationHint?: number): Promise<void>;
   play(): Promise<void>;
   pause(): Promise<void>;
   resume(): Promise<void>;

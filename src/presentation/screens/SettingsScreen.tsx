@@ -17,6 +17,14 @@ import { radius } from '../theme/radius';
 import { shadows } from '../theme/shadows';
 import { usePreferences } from '../hooks/usePreferences';
 import { VoiceOptions, VoiceDescriptors } from '../../domain/value-objects/VoiceOption';
+import {
+  ElevenLabsVoices,
+  EL_STABILITY_PRESETS,
+  EL_SIMILARITY_PRESETS,
+  EL_STYLE_PRESETS,
+  EL_SPEED_PRESETS,
+} from '../../domain/value-objects/ElevenLabsVoice';
+import { TTSProviders, TTSProvider } from '../../domain/value-objects/TTSProvider';
 import { Languages } from '../../domain/value-objects/Language';
 
 const DURATION_OPTIONS = [5, 10, 15, 20, 30, 40];
@@ -29,15 +37,26 @@ const SPEED_OPTIONS = [
   { value: 1.15, label: 'Brisk' },
 ];
 
+const TTS_PROVIDER_OPTIONS: { value: TTSProvider; label: string }[] = [
+  { value: TTSProviders.OPENAI, label: 'OpenAI' },
+  { value: TTSProviders.ELEVENLABS, label: 'ElevenLabs' },
+];
+
 export function SettingsScreen() {
   const insets = useSafeAreaInsets();
   const prefs = usePreferences();
   const [apiKeyInput, setApiKeyInput] = useState(prefs.apiKey);
   const [showApiKey, setShowApiKey] = useState(false);
+  const [elApiKeyInput, setElApiKeyInput] = useState(prefs.elevenLabsApiKey);
+  const [showElApiKey, setShowElApiKey] = useState(false);
 
   React.useEffect(() => {
     setApiKeyInput(prefs.apiKey);
   }, [prefs.apiKey]);
+
+  React.useEffect(() => {
+    setElApiKeyInput(prefs.elevenLabsApiKey);
+  }, [prefs.elevenLabsApiKey]);
 
   const handleSaveApiKey = async () => {
     const trimmed = apiKeyInput.trim();
@@ -49,7 +68,18 @@ export function SettingsScreen() {
     Alert.alert('Saved', 'API key saved successfully.');
   };
 
-  const voices = Object.values(VoiceOptions);
+  const handleSaveElApiKey = async () => {
+    const trimmed = elApiKeyInput.trim();
+    if (trimmed && !trimmed.startsWith('sk_')) {
+      Alert.alert('Invalid API Key', 'ElevenLabs API keys typically start with "sk_".');
+      return;
+    }
+    await prefs.setElevenLabsApiKey(trimmed);
+    Alert.alert('Saved', 'ElevenLabs API key saved successfully.');
+  };
+
+  const isElevenLabs = prefs.ttsProvider === 'elevenlabs';
+  const openaiVoices = Object.values(VoiceOptions);
 
   return (
     <ScrollView
@@ -62,7 +92,7 @@ export function SettingsScreen() {
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
           <Ionicons name="key-outline" size={18} color={colors.accent} />
-          <Text style={styles.sectionTitle}>API Key</Text>
+          <Text style={styles.sectionTitle}>OpenAI API Key</Text>
         </View>
         <View style={styles.apiKeyRow}>
           <TextInput
@@ -91,6 +121,177 @@ export function SettingsScreen() {
         </TouchableOpacity>
       </View>
 
+      {/* TTS Provider Section */}
+      <View style={styles.section}>
+        <View style={styles.sectionHeader}>
+          <Ionicons name="swap-horizontal-outline" size={18} color={colors.accent} />
+          <Text style={styles.sectionTitle}>TTS Provider</Text>
+        </View>
+        <View style={styles.durationRow}>
+          {TTS_PROVIDER_OPTIONS.map(({ value, label }) => {
+            const isSelected = prefs.ttsProvider === value;
+            return (
+              <TouchableOpacity
+                key={value}
+                style={[styles.providerPill, isSelected && styles.providerPillSelected]}
+                onPress={() => prefs.setTtsProvider(value)}
+              >
+                <Text style={[styles.providerText, isSelected && styles.providerTextSelected]}>
+                  {label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      </View>
+
+      {/* ElevenLabs API Key - visible only when provider is elevenlabs */}
+      {isElevenLabs && (
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="key-outline" size={18} color={colors.teal} />
+            <Text style={styles.sectionTitle}>ElevenLabs API Key</Text>
+          </View>
+          <View style={styles.apiKeyRow}>
+            <TextInput
+              style={styles.apiKeyInput}
+              value={elApiKeyInput}
+              onChangeText={setElApiKeyInput}
+              placeholder="sk_..."
+              placeholderTextColor={colors.textMuted}
+              secureTextEntry={!showElApiKey}
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+            <TouchableOpacity
+              style={styles.eyeButton}
+              onPress={() => setShowElApiKey(!showElApiKey)}
+            >
+              <Ionicons
+                name={showElApiKey ? 'eye-off-outline' : 'eye-outline'}
+                size={20}
+                color={colors.textSecondary}
+              />
+            </TouchableOpacity>
+          </View>
+          <TouchableOpacity style={styles.saveButton} onPress={handleSaveElApiKey}>
+            <Text style={styles.saveButtonText}>Save</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {/* ElevenLabs Voice Settings */}
+      {isElevenLabs && (
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="options-outline" size={18} color={colors.teal} />
+            <Text style={styles.sectionTitle}>Voice Settings</Text>
+          </View>
+
+          {/* Stability */}
+          <Text style={styles.settingLabel}>Stability</Text>
+          <Text style={styles.settingHint}>Lower = more emotional variation</Text>
+          <View style={styles.durationRow}>
+            {EL_STABILITY_PRESETS.map(({ value, label }) => {
+              const isSelected = prefs.elVoiceSettings.stability === value;
+              return (
+                <TouchableOpacity
+                  key={value}
+                  style={[styles.elPill, isSelected && styles.elPillSelected]}
+                  onPress={() => prefs.setElVoiceSetting('stability', value)}
+                >
+                  <Text style={[styles.elPillText, isSelected && styles.elPillTextSelected]}>
+                    {label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+
+          {/* Similarity Boost */}
+          <Text style={[styles.settingLabel, { marginTop: spacing.lg }]}>Similarity</Text>
+          <Text style={styles.settingHint}>Higher = more consistent to original voice</Text>
+          <View style={styles.durationRow}>
+            {EL_SIMILARITY_PRESETS.map(({ value, label }) => {
+              const isSelected = prefs.elVoiceSettings.similarityBoost === value;
+              return (
+                <TouchableOpacity
+                  key={value}
+                  style={[styles.elPill, isSelected && styles.elPillSelected]}
+                  onPress={() => prefs.setElVoiceSetting('similarityBoost', value)}
+                >
+                  <Text style={[styles.elPillText, isSelected && styles.elPillTextSelected]}>
+                    {label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+
+          {/* Style */}
+          <Text style={[styles.settingLabel, { marginTop: spacing.lg }]}>Style</Text>
+          <Text style={styles.settingHint}>Higher = more style exaggeration</Text>
+          <View style={styles.durationRow}>
+            {EL_STYLE_PRESETS.map(({ value, label }) => {
+              const isSelected = prefs.elVoiceSettings.style === value;
+              return (
+                <TouchableOpacity
+                  key={value}
+                  style={[styles.elPill, isSelected && styles.elPillSelected]}
+                  onPress={() => prefs.setElVoiceSetting('style', value)}
+                >
+                  <Text style={[styles.elPillText, isSelected && styles.elPillTextSelected]}>
+                    {label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+
+          {/* Speed */}
+          <Text style={[styles.settingLabel, { marginTop: spacing.lg }]}>Speed</Text>
+          <View style={styles.durationRow}>
+            {EL_SPEED_PRESETS.map(({ value, label }) => {
+              const isSelected = prefs.elVoiceSettings.speed === value;
+              return (
+                <TouchableOpacity
+                  key={value}
+                  style={[styles.elPill, isSelected && styles.elPillSelected]}
+                  onPress={() => prefs.setElVoiceSetting('speed', value)}
+                >
+                  <Text style={[styles.elPillText, isSelected && styles.elPillTextSelected]}>
+                    {label}
+                  </Text>
+                  <Text style={[styles.elPillValue, isSelected && styles.elPillValueSelected]}>
+                    {value}x
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+
+          {/* Speaker Boost */}
+          <Text style={[styles.settingLabel, { marginTop: spacing.lg }]}>Speaker Boost</Text>
+          <Text style={styles.settingHint}>Enhances voice clarity</Text>
+          <View style={styles.durationRow}>
+            {[true, false].map((val) => {
+              const isSelected = prefs.elVoiceSettings.useSpeakerBoost === val;
+              return (
+                <TouchableOpacity
+                  key={String(val)}
+                  style={[styles.elPill, isSelected && styles.elPillSelected]}
+                  onPress={() => prefs.setElVoiceSetting('useSpeakerBoost', val)}
+                >
+                  <Text style={[styles.elPillText, isSelected && styles.elPillTextSelected]}>
+                    {val ? 'ON' : 'OFF'}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </View>
+      )}
+
       {/* Voice Section */}
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
@@ -98,24 +299,43 @@ export function SettingsScreen() {
           <Text style={styles.sectionTitle}>Default Voice</Text>
         </View>
         <View style={styles.voiceGrid}>
-          {voices.map((voice) => {
-            const isSelected = prefs.defaultVoice === voice;
-            return (
-              <TouchableOpacity
-                key={voice}
-                style={[styles.voiceCard, isSelected && styles.voiceCardSelected]}
-                onPress={() => prefs.setDefaultVoice(voice)}
-                activeOpacity={0.7}
-              >
-                <Text style={[styles.voiceName, isSelected && styles.voiceNameSelected]}>
-                  {voice.charAt(0).toUpperCase() + voice.slice(1)}
-                </Text>
-                <Text style={[styles.voiceDescriptor, isSelected && styles.voiceDescriptorSelected]}>
-                  {VoiceDescriptors[voice as keyof typeof VoiceDescriptors]}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
+          {isElevenLabs
+            ? ElevenLabsVoices.map((voice) => {
+                const isSelected = prefs.defaultElevenLabsVoice === voice.id;
+                return (
+                  <TouchableOpacity
+                    key={voice.id}
+                    style={[styles.voiceCard, isSelected && styles.voiceCardSelected]}
+                    onPress={() => prefs.setDefaultElevenLabsVoice(voice.id)}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[styles.voiceName, isSelected && styles.voiceNameSelected]}>
+                      {voice.label}
+                    </Text>
+                    <Text style={[styles.voiceDescriptor, isSelected && styles.voiceDescriptorSelected]}>
+                      {voice.descriptor}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })
+            : openaiVoices.map((voice) => {
+                const isSelected = prefs.defaultVoice === voice;
+                return (
+                  <TouchableOpacity
+                    key={voice}
+                    style={[styles.voiceCard, isSelected && styles.voiceCardSelected]}
+                    onPress={() => prefs.setDefaultVoice(voice)}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[styles.voiceName, isSelected && styles.voiceNameSelected]}>
+                      {voice.charAt(0).toUpperCase() + voice.slice(1)}
+                    </Text>
+                    <Text style={[styles.voiceDescriptor, isSelected && styles.voiceDescriptorSelected]}>
+                      {VoiceDescriptors[voice as keyof typeof VoiceDescriptors]}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
         </View>
       </View>
 
@@ -143,32 +363,34 @@ export function SettingsScreen() {
         </View>
       </View>
 
-      {/* Speed Section */}
-      <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <Ionicons name="speedometer-outline" size={18} color={colors.accent} />
-          <Text style={styles.sectionTitle}>Default Speed</Text>
+      {/* Speed Section - only for OpenAI (ElevenLabs speed is in Voice Settings) */}
+      {!isElevenLabs && (
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="speedometer-outline" size={18} color={colors.accent} />
+            <Text style={styles.sectionTitle}>Default Speed</Text>
+          </View>
+          <View style={styles.durationRow}>
+            {SPEED_OPTIONS.map(({ value, label }) => {
+              const isSelected = prefs.defaultSpeed === value;
+              return (
+                <TouchableOpacity
+                  key={value}
+                  style={[styles.speedPill, isSelected && styles.speedPillSelected]}
+                  onPress={() => prefs.setDefaultSpeed(value)}
+                >
+                  <Text style={[styles.speedText, isSelected && styles.speedTextSelected]}>
+                    {label}
+                  </Text>
+                  <Text style={[styles.speedValue, isSelected && styles.speedValueSelected]}>
+                    {value}x
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
         </View>
-        <View style={styles.durationRow}>
-          {SPEED_OPTIONS.map(({ value, label }) => {
-            const isSelected = prefs.defaultSpeed === value;
-            return (
-              <TouchableOpacity
-                key={value}
-                style={[styles.speedPill, isSelected && styles.speedPillSelected]}
-                onPress={() => prefs.setDefaultSpeed(value)}
-              >
-                <Text style={[styles.speedText, isSelected && styles.speedTextSelected]}>
-                  {label}
-                </Text>
-                <Text style={[styles.speedValue, isSelected && styles.speedValueSelected]}>
-                  {value}x
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-      </View>
+      )}
 
       {/* Language Section */}
       <View style={styles.section}>
@@ -317,6 +539,25 @@ const styles = StyleSheet.create({
   durationTextSelected: {
     color: colors.accentLight,
   },
+  providerPill: {
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.pill,
+    backgroundColor: colors.surfaceElevated,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  providerPillSelected: {
+    backgroundColor: colors.tealMuted,
+    borderColor: colors.teal,
+  },
+  providerText: {
+    ...typography.labelLarge,
+    color: colors.textSecondary,
+  },
+  providerTextSelected: {
+    color: colors.tealLight,
+  },
   speedPill: {
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.sm,
@@ -363,6 +604,44 @@ const styles = StyleSheet.create({
   },
   langTextSelected: {
     color: colors.accentLight,
+  },
+  settingLabel: {
+    ...typography.labelLarge,
+    color: colors.text,
+    marginBottom: spacing.xxs,
+  },
+  settingHint: {
+    ...typography.labelSmall,
+    color: colors.textMuted,
+    marginBottom: spacing.sm,
+  },
+  elPill: {
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.pill,
+    backgroundColor: colors.surfaceElevated,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+  },
+  elPillSelected: {
+    backgroundColor: colors.tealMuted,
+    borderColor: colors.teal,
+  },
+  elPillText: {
+    ...typography.labelLarge,
+    color: colors.textSecondary,
+  },
+  elPillTextSelected: {
+    color: colors.tealLight,
+  },
+  elPillValue: {
+    ...typography.labelSmall,
+    color: colors.textMuted,
+    marginTop: 2,
+  },
+  elPillValueSelected: {
+    color: colors.tealLight,
   },
   aboutText: {
     ...typography.labelMedium,

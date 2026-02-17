@@ -30,8 +30,7 @@ export function PlayerScreen() {
   const player = useAudioPlayer();
 
   useEffect(() => {
-    const segmentsPath = `${meditation.audioDirectoryPath}segments.json`;
-    player.load(segmentsPath);
+    player.load(meditation.audioFilePath, meditation.actualDuration);
     return () => {
       player.unload();
     };

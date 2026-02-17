@@ -19,8 +19,8 @@ export function useAudioPlayer() {
     };
   }, []);
 
-  const load = useCallback(async (segmentsJsonPath: string) => {
-    await playerRef.current.loadPlaylist(segmentsJsonPath);
+  const load = useCallback(async (audioFilePath: string, durationHint?: number) => {
+    await playerRef.current.loadPlaylist(audioFilePath, durationHint);
     setIsLoaded(true);
     setStatus({
       isPlaying: false,

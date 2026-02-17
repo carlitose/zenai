@@ -32,6 +32,7 @@ import { QuickOptions } from '../components/QuickOptions';
 import { usePreferences } from '../hooks/usePreferences';
 import { RootStackParamList, TabParamList } from '../navigation/types';
 import { VoiceOptions, VoiceOptionLabels, VoiceDescriptors, VoiceOption } from '../../domain/value-objects/VoiceOption';
+import { ElevenLabsVoices } from '../../domain/value-objects/ElevenLabsVoice';
 import { MeditationTypeDefaultPrompts, MeditationType } from '../../domain/value-objects/MeditationType';
 import { Languages } from '../../domain/value-objects/Language';
 
@@ -43,7 +44,8 @@ type Nav = CompositeNavigationProp<
 export function HomeScreen() {
   const navigation = useNavigation<Nav>();
   const insets = useSafeAreaInsets();
-  const { apiKey, defaultDuration, defaultVoice, defaultSpeed, defaultLanguage, reload } = usePreferences();
+  const { apiKey, defaultDuration, defaultVoice, defaultSpeed, defaultLanguage, ttsProvider, defaultElevenLabsVoice, elevenLabsApiKey, reload } = usePreferences();
+  const isElevenLabs = ttsProvider === 'elevenlabs';
 
   useFocusEffect(
     useCallback(() => {
@@ -79,9 +81,12 @@ export function HomeScreen() {
     setLanguage(defaultLanguage);
   }, [defaultLanguage]);
 
-  const canGenerate = prompt.trim().length > 0 && apiKey.length > 0;
+  useEffect(() => {
+    setVoice(undefined);
+  }, [ttsProvider]);
 
-  const allVoices = Object.values(VoiceOptions);
+  const canGenerate = prompt.trim().length > 0 && apiKey.length > 0
+    && (!isElevenLabs || elevenLabsApiKey.length > 0);
 
   // Entrance animation
   const greetingOpacity = useSharedValue(0);
@@ -141,6 +146,18 @@ export function HomeScreen() {
           </TouchableOpacity>
         )}
 
+        {isElevenLabs && !elevenLabsApiKey && apiKey.length > 0 && (
+          <TouchableOpacity
+            style={styles.banner}
+            onPress={() => navigation.navigate('Settings')}
+          >
+            <View style={styles.bannerBorder} />
+            <Text style={styles.bannerText}>
+              Set your ElevenLabs API key in Settings to use ElevenLabs voices.
+            </Text>
+          </TouchableOpacity>
+        )}
+
         <Animated.View style={greetingStyle}>
           <Text style={styles.greeting}>What would you like to explore?</Text>
         </Animated.View>
@@ -172,26 +189,46 @@ export function HomeScreen() {
                 Default
               </Text>
               <Text style={[styles.voiceChipSub, voice === undefined && styles.voiceChipSubSelected]}>
-                {defaultVoice.charAt(0).toUpperCase() + defaultVoice.slice(1)}
+                {isElevenLabs
+                  ? (ElevenLabsVoices.find(v => v.id === defaultElevenLabsVoice)?.label ?? 'River')
+                  : defaultVoice.charAt(0).toUpperCase() + defaultVoice.slice(1)}
               </Text>
             </TouchableOpacity>
-            {allVoices.map((v) => {
-              const isSelected = voice === v;
-              return (
-                <TouchableOpacity
-                  key={v}
-                  style={[styles.voiceChip, isSelected && styles.voiceChipSelected]}
-                  onPress={() => setVoice(v)}
-                >
-                  <Text style={[styles.voiceChipText, isSelected && styles.voiceChipTextSelected]}>
-                    {VoiceOptionLabels[v]}
-                  </Text>
-                  <Text style={[styles.voiceChipSub, isSelected && styles.voiceChipSubSelected]}>
-                    {VoiceDescriptors[v]}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
+            {isElevenLabs
+              ? ElevenLabsVoices.map((v) => {
+                  const isSelected = voice === v.id;
+                  return (
+                    <TouchableOpacity
+                      key={v.id}
+                      style={[styles.voiceChip, isSelected && styles.voiceChipSelected]}
+                      onPress={() => setVoice(v.id)}
+                    >
+                      <Text style={[styles.voiceChipText, isSelected && styles.voiceChipTextSelected]}>
+                        {v.label}
+                      </Text>
+                      <Text style={[styles.voiceChipSub, isSelected && styles.voiceChipSubSelected]}>
+                        {v.descriptor}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })
+              : Object.values(VoiceOptions).map((v) => {
+                  const isSelected = voice === v;
+                  return (
+                    <TouchableOpacity
+                      key={v}
+                      style={[styles.voiceChip, isSelected && styles.voiceChipSelected]}
+                      onPress={() => setVoice(v)}
+                    >
+                      <Text style={[styles.voiceChipText, isSelected && styles.voiceChipTextSelected]}>
+                        {VoiceOptionLabels[v]}
+                      </Text>
+                      <Text style={[styles.voiceChipSub, isSelected && styles.voiceChipSubSelected]}>
+                        {VoiceDescriptors[v]}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
           </ScrollView>
         </View>
 
@@ -223,29 +260,31 @@ export function HomeScreen() {
           </ScrollView>
         </View>
 
-        {/* Speed Selector */}
-        <View style={styles.selectorSection}>
-          <View style={styles.selectorHeader}>
-            <Ionicons name="speedometer-outline" size={16} color={colors.teal} />
-            <Text style={styles.selectorLabel}>Speed</Text>
+        {/* Speed Selector - only for OpenAI (ElevenLabs speed is in Settings) */}
+        {!isElevenLabs && (
+          <View style={styles.selectorSection}>
+            <View style={styles.selectorHeader}>
+              <Ionicons name="speedometer-outline" size={16} color={colors.teal} />
+              <Text style={styles.selectorLabel}>Speed</Text>
+            </View>
+            <View style={styles.speedRow}>
+              {speedPresets.map(({ value, label }) => {
+                const isSelected = speed === value;
+                return (
+                  <TouchableOpacity
+                    key={value}
+                    style={[styles.speedChip, isSelected && styles.speedChipSelected]}
+                    onPress={() => setSpeed(value)}
+                  >
+                    <Text style={[styles.speedChipText, isSelected && styles.speedChipTextSelected]}>
+                      {label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
           </View>
-          <View style={styles.speedRow}>
-            {speedPresets.map(({ value, label }) => {
-              const isSelected = speed === value;
-              return (
-                <TouchableOpacity
-                  key={value}
-                  style={[styles.speedChip, isSelected && styles.speedChipSelected]}
-                  onPress={() => setSpeed(value)}
-                >
-                  <Text style={[styles.speedChipText, isSelected && styles.speedChipTextSelected]}>
-                    {label}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        </View>
+        )}
 
         <TouchableOpacity
           style={[styles.generateButton, !canGenerate && styles.generateButtonDisabled]}

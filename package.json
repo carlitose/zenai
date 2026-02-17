@@ -40,6 +40,7 @@
     "react-native-worklets": "0.5.1"
   },
   "devDependencies": {
+    "@elevenlabs/elevenlabs-js": "^2.35.0",
     "@types/react": "~19.1.0",
     "babel-plugin-module-resolver": "^5.0.2",
     "babel-preset-expo": "^54.0.10",

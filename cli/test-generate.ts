@@ -3,6 +3,7 @@ import * as path from "path";
 import { execSync } from "child_process";
 import { config } from "dotenv";
 import OpenAI from "openai";
+import { ElevenLabsClient } from "@elevenlabs/elevenlabs-js";
 import { MEDITATION_SYSTEM_PROMPT, WORDS_PER_MINUTE, TTS_VOICE_INSTRUCTIONS, TEXT_GENERATION_MODEL, TEXT_GENERATION_REASONING, TEXT_GENERATION_MAX_OUTPUT_TOKENS, buildUserPrompt } from "../src/shared/prompts/meditation-system-prompt";
 
 config({ path: path.resolve(__dirname, "../.env") });
@@ -47,6 +48,8 @@ type MeditationType =
   | "self_compassion"
   | "breathing";
 
+type TTSProvider = "openai" | "elevenlabs";
+
 interface SpeechSegment {
   type: "speech";
   text: string;
@@ -71,9 +74,20 @@ const VALID_TYPES: MeditationType[] = [
   "guided", "vipassana", "sleep", "relaxation", "self_compassion", "breathing",
 ];
 
-const VALID_VOICES = [
+const VALID_OPENAI_VOICES = [
   "coral", "marin", "cedar", "sage", "ballad", "ash", "verse",
   "alloy", "echo", "fable", "nova", "onyx", "shimmer",
+];
+
+const VALID_ELEVENLABS_VOICES: { id: string; label: string }[] = [
+  { id: "SAz9YHcvj6GT2YYXdXww", label: "river" },
+  { id: "Tfv2PGiTliSQ4XSXrJmA", label: "katherine" },
+  { id: "KoVIHoyLDrQyd4pGalbs", label: "autumn-veil" },
+  { id: "JBFqnCBsd6RMkjVDRZzb", label: "george" },
+  { id: "nPczCjzI2devNBz1zQrb", label: "brian" },
+  { id: "pqHfZKP75CvOlQylNhV4", label: "bill" },
+  { id: "pFZP5JQG7iQjIQuC4Bku", label: "lily" },
+  { id: "oVJbgLwL0s5pk9e2U6QH", label: "manuela" },
 ];
 
 const DONG_DURATION_S = 2.5;
@@ -91,6 +105,7 @@ function parseArgs() {
   let speed = 1;
   let audio = false;
   let language = "";
+  let ttsProvider: TTSProvider = "openai";
 
   for (let i = 0; i < args.length; i++) {
     switch (args[i]) {
@@ -110,7 +125,7 @@ function parseArgs() {
         break;
       case "--voice":
       case "-v":
-        voice = VALID_VOICES.includes(args[i + 1]) ? args[++i] : "coral";
+        voice = args[++i] ?? "coral";
         break;
       case "--speed":
       case "-s":
@@ -123,6 +138,9 @@ function parseArgs() {
       case "--audio":
       case "-a":
         audio = true;
+        break;
+      case "--tts-provider":
+        ttsProvider = (args[++i] === "elevenlabs" ? "elevenlabs" : "openai") as TTSProvider;
         break;
       case "--help":
       case "-h":
@@ -137,27 +155,45 @@ function parseArgs() {
     }
   }
 
-  return { prompt, type, duration, voice, speed, audio, language };
+  // Validate voice against the selected provider
+  if (ttsProvider === "elevenlabs") {
+    const elLabels = VALID_ELEVENLABS_VOICES.map((v) => v.label);
+    if (!elLabels.includes(voice.toLowerCase())) {
+      voice = "autumn-veil";
+    }
+  } else {
+    if (!VALID_OPENAI_VOICES.includes(voice)) {
+      voice = "coral";
+    }
+  }
+
+  return { prompt, type, duration, voice, speed, audio, language, ttsProvider };
 }
 
 function printUsage() {
+  const elVoiceNames = VALID_ELEVENLABS_VOICES.map((v) => v.label).join("|");
   console.log(`
 Usage: npx tsx cli/test-generate.ts --prompt "your meditation prompt" [options]
 
 Options:
-  -p, --prompt <text>     Meditation prompt (required)
-  -t, --type <type>       Type: guided|vipassana|sleep|relaxation|self_compassion|breathing [guided]
-  -d, --duration <min>    Duration in minutes [10]
-  -v, --voice <voice>     TTS voice: coral|marin|cedar|sage|ballad|ash|verse|alloy|echo|fable|onyx|nova|shimmer [coral]
-  -s, --speed <speed>     TTS speed: 0.25-4.0 [0.85]
-  -l, --language <lang>   TTS language: en, it, fr, etc. [auto-detect]
-  -a, --audio             Generate audio files (default: text only)
-  -h, --help              Show this help
+  -p, --prompt <text>           Meditation prompt (required)
+  -t, --type <type>             Type: guided|vipassana|sleep|relaxation|self_compassion|breathing [guided]
+  -d, --duration <min>          Duration in minutes [10]
+  -v, --voice <voice>           TTS voice (see below) [coral]
+  -s, --speed <speed>           TTS speed: 0.25-4.0 [0.85]
+  -l, --language <lang>         TTS language: en, it, fr, etc. [auto-detect]
+  -a, --audio                   Generate audio files (default: text only)
+  --tts-provider <provider>     TTS provider: openai|elevenlabs [openai]
+  -h, --help                    Show this help
+
+OpenAI voices: ${VALID_OPENAI_VOICES.join(", ")}
+ElevenLabs voices: ${elVoiceNames}
 
 Examples:
   npx tsx cli/test-generate.ts --prompt "Meditazione sul respiro" --duration 5
   npx tsx cli/test-generate.ts -p "Sleep meditation" -t sleep -d 15 -a
   npx tsx cli/test-generate.ts -p "Body scan rilassante" -d 10 -v shimmer --audio
+  npx tsx cli/test-generate.ts -p "Breathing meditation" -a --tts-provider elevenlabs -v rachel
 `);
 }
 
@@ -323,6 +359,46 @@ async function generateTTS(client: OpenAI, text: string, voice: string, speed: n
   return Buffer.from(await response.arrayBuffer());
 }
 
+// ---------------------------------------------------------------------------
+// ElevenLabs TTS
+// ---------------------------------------------------------------------------
+
+async function generateElevenLabsTTS(
+  client: ElevenLabsClient,
+  text: string,
+  voiceId: string,
+  speed: number,
+  language: string,
+): Promise<Buffer> {
+  const audio = await client.textToSpeech.convert(voiceId, {
+    text,
+    modelId: "eleven_flash_v2_5",
+    outputFormat: "mp3_44100_128",
+    voiceSettings: {
+      stability: 0.3,
+      similarityBoost: 0.9,
+      style: 0.4,
+      useSpeakerBoost: true,
+      speed: 0.7,
+    },
+    ...(language ? { languageCode: language } : {}),
+  });
+
+  // The SDK returns a ReadableStream; collect it into a Buffer via its reader
+  const reader = audio.getReader();
+  const chunks: Uint8Array[] = [];
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    chunks.push(value);
+  }
+  return Buffer.concat(chunks);
+}
+
+// ---------------------------------------------------------------------------
+// Silence / Concat helpers
+// ---------------------------------------------------------------------------
+
 function generateSilenceMp3(seconds: number, outputPath: string): void {
   execSync(
     `ffmpeg -f lavfi -i anullsrc=sample_rate=48000:channel_layout=stereo -t ${seconds} -q:a 9 -acodec libmp3lame "${outputPath}" -y`,
@@ -355,12 +431,19 @@ function concatenateSegments(segmentFiles: string[], outputDir: string): string 
 // Audio file generation
 // ---------------------------------------------------------------------------
 
+function resolveElevenLabsVoiceId(voiceName: string): string {
+  const entry = VALID_ELEVENLABS_VOICES.find((v) => v.label === voiceName.toLowerCase());
+  return entry?.id ?? VALID_ELEVENLABS_VOICES[0].id;
+}
+
 async function generateAudioFiles(
-  client: OpenAI,
+  openaiClient: OpenAI,
+  elevenLabsClient: ElevenLabsClient | null,
   segments: Segment[],
   voice: string,
   speed: number,
   language: string,
+  ttsProvider: TTSProvider,
 ): Promise<string> {
   const outputDir = path.resolve(__dirname, "output");
   fs.mkdirSync(outputDir, { recursive: true });
@@ -381,8 +464,17 @@ async function generateAudioFiles(
       const name = `seg_${idx}_speech.mp3`;
       const dest = path.join(outputDir, name);
       const words = seg.text.split(/\s+/).length;
-      console.log(c.dim(`  [${i + 1}/${segments.length}] TTS speech (${words} words)...`));
-      const buf = await generateTTS(client, seg.text, voice, speed, language);
+      const providerLabel = ttsProvider === "elevenlabs" ? "ElevenLabs" : "OpenAI";
+      console.log(c.dim(`  [${i + 1}/${segments.length}] TTS speech via ${providerLabel} (${words} words)...`));
+
+      let buf: Buffer;
+      if (ttsProvider === "elevenlabs" && elevenLabsClient) {
+        const voiceId = resolveElevenLabsVoiceId(voice);
+        buf = await generateElevenLabsTTS(elevenLabsClient, seg.text, voiceId, speed, language);
+      } else {
+        buf = await generateTTS(openaiClient, seg.text, voice, speed, language);
+      }
+
       fs.writeFileSync(dest, buf);
       segmentFiles.push(dest);
     } else if (seg.type === "silence") {
@@ -414,7 +506,7 @@ async function generateAudioFiles(
 // ---------------------------------------------------------------------------
 
 async function main() {
-  const { prompt, type, duration, voice, speed, audio, language } = parseArgs();
+  const { prompt, type, duration, voice, speed, audio, language, ttsProvider } = parseArgs();
 
   if (!prompt) {
     printUsage();
@@ -428,14 +520,25 @@ async function main() {
     process.exit(1);
   }
 
+  let elevenLabsClient: ElevenLabsClient | null = null;
+  if (ttsProvider === "elevenlabs") {
+    const elApiKey = process.env.ELEVENLABS_API_KEY;
+    if (!elApiKey) {
+      console.error(c.red("Error: ELEVENLABS_API_KEY not found. Set it in .env or as env variable."));
+      process.exit(1);
+    }
+    elevenLabsClient = new ElevenLabsClient({ apiKey: elApiKey });
+  }
+
   console.log(c.bold("\n=== ZenAI Meditation Generator ===\n"));
-  console.log(`  Prompt:   "${prompt}"`);
-  console.log(`  Type:     ${type}`);
-  console.log(`  Duration: ${duration} min`);
-  console.log(`  Voice:    ${voice}`);
-  console.log(`  Speed:    ${speed}`);
-  console.log(`  Language: ${language || "auto"}`);
-  console.log(`  Audio:    ${audio ? "yes" : "no (text only)"}`);
+  console.log(`  Prompt:       "${prompt}"`);
+  console.log(`  Type:         ${type}`);
+  console.log(`  Duration:     ${duration} min`);
+  console.log(`  TTS Provider: ${ttsProvider}`);
+  console.log(`  Voice:        ${voice}`);
+  console.log(`  Speed:        ${speed}`);
+  console.log(`  Language:     ${language || "auto"}`);
+  console.log(`  Audio:        ${audio ? "yes" : "no (text only)"}`);
   const client = createOpenAIClient(apiKey);
 
   console.log(c.dim("\nGenerating text with GPT-5.2 (Responses API + reasoning)...\n"));
@@ -450,7 +553,7 @@ async function main() {
 
   if (audio) {
     console.log(c.dim("\nGenerating audio files...\n"));
-    const finalFile = await generateAudioFiles(client, segments, voice, speed, language);
+    const finalFile = await generateAudioFiles(client, elevenLabsClient, segments, voice, speed, language, ttsProvider);
     console.log(c.bold("\n--- Generated File ---"));
     console.log(`  ${path.relative(process.cwd(), finalFile)}`);
     console.log(c.green(`\nDone! Single meditation file created.`));

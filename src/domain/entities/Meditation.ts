@@ -37,6 +37,10 @@ export class Meditation {
     );
   }
 
+  get audioFilePath(): string {
+    return `${this.audioDirectoryPath}meditation.mp3`;
+  }
+
   get excerpt(): string {
     const text = this.generatedText
       .replace(/\[SILENT\s+\d+s?\]/gi, '')
