@@ -5,7 +5,7 @@ import { stripMp3Metadata, calculateMp3Duration } from '../audio/Mp3FrameUtils';
 
 const ELEVENLABS_TTS_URL = 'https://api.elevenlabs.io/v1/text-to-speech';
 const MODEL_ID = 'eleven_flash_v2_5';
-const MAX_CHUNK_LENGTH = 10000;
+const MAX_CHUNK_LENGTH = 4000;
 
 export interface TimestampAlignment {
   characters: string[];

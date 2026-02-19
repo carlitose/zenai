@@ -28,11 +28,11 @@ export interface ElevenLabsVoiceSettings {
 }
 
 export const DEFAULT_ELEVENLABS_VOICE_SETTINGS: ElevenLabsVoiceSettings = {
-  stability: 0.65,
+  stability: 0.80,
   similarityBoost: 0.9,
-  style: 0.4,
+  style: 0.0,
   useSpeakerBoost: true,
-  speed: 0.7,
+  speed: 0.85,
 };
 
 export const EL_PREF_KEYS = {
@@ -60,11 +60,11 @@ export const EL_SIMILARITY_PRESETS = [
 ];
 
 export const EL_STYLE_PRESETS = [
-  { value: 0.0, label: 'None' },
+  { value: 0.0, label: 'None (Recommended)' },
+  { value: 0.1, label: 'Minimal' },
   { value: 0.2, label: 'Subtle' },
   { value: 0.4, label: 'Moderate' },
   { value: 0.6, label: 'Expressive' },
-  { value: 0.8, label: 'Dramatic' },
 ];
 
 export const EL_SPEED_PRESETS = [
