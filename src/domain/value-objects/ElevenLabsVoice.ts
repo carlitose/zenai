@@ -28,7 +28,7 @@ export interface ElevenLabsVoiceSettings {
 }
 
 export const DEFAULT_ELEVENLABS_VOICE_SETTINGS: ElevenLabsVoiceSettings = {
-  stability: 0.3,
+  stability: 0.65,
   similarityBoost: 0.9,
   style: 0.4,
   useSpeakerBoost: true,

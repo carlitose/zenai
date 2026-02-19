@@ -1,7 +1,7 @@
 import { MeditationGeneratorPort, GenerateTextInput } from '../../application/ports/MeditationGeneratorPort';
 import { StoragePort } from '../../application/ports/StoragePort';
 import { OpenAIMeditationGenerator } from '../openai/OpenAIMeditationGenerator';
-import { ElevenLabsTTSAdapter } from '../elevenlabs/ElevenLabsTTSAdapter';
+import { ElevenLabsTTSAdapter, FullAudioWithTimestampsResult } from '../elevenlabs/ElevenLabsTTSAdapter';
 import {
   ElevenLabsVoiceSettings,
   DEFAULT_ELEVENLABS_VOICE_SETTINGS,
@@ -37,6 +37,21 @@ export class HybridMeditationGenerator implements MeditationGeneratorPort {
     }
 
     return this.openaiGenerator.generateSegmentAudio(text, voice, _apiKey, speed, language);
+  }
+
+  async generateFullAudioWithTimestamps(
+    text: string,
+    voice: string,
+    language?: string,
+  ): Promise<FullAudioWithTimestampsResult | null> {
+    const provider = (await this.storage.getPreference('ttsProvider')) || 'openai';
+    if (provider !== 'elevenlabs') return null;
+
+    const elApiKey = await this.storage.getPreference('elevenLabsApiKey');
+    if (!elApiKey) throw new Error('ELEVENLABS_API_KEY_MISSING');
+
+    const settings = await this.loadElevenLabsVoiceSettings();
+    return this.elevenLabsTTS.generateFullAudioWithTimestamps(text, voice, elApiKey, settings, language);
   }
 
   private async loadElevenLabsVoiceSettings(): Promise<ElevenLabsVoiceSettings> {

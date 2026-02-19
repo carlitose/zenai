@@ -19,6 +19,10 @@ export function GenerationProgress({ phase }: Props) {
         return 'Composing your meditation...';
       case 'generating_audio':
         return `Giving it a voice... (${phase.current}/${phase.total})`;
+      case 'generating_full_audio':
+        return 'Giving it a voice...';
+      case 'splitting_audio':
+        return 'Almost there...';
       case 'saving':
         return 'Almost there...';
       case 'done':
@@ -32,6 +36,10 @@ export function GenerationProgress({ phase }: Props) {
         return 0.1;
       case 'generating_audio':
         return 0.1 + (phase.current / phase.total) * 0.8;
+      case 'generating_full_audio':
+        return 0.5;
+      case 'splitting_audio':
+        return 0.85;
       case 'saving':
         return 0.95;
       case 'done':
