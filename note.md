@@ -1,0 +1,3 @@
+La difficoltà di questo progetto è stato 
+1) l'aggiungere le pause senza tagliare le parole all'interno del audio, non si capisce esattamente in base al timestamp dove talgiare sopratutto tra un chunk e l'altro
+2)Aveare la voce naturale, openai sembra sempre robotica. ElevenLabs tende a una distorsione, quidni piccoli chunk ricevi un collage di voci diverse, grandi chunk risolvi ma cmq tra un chunk e l'altro potresti avere differenze. Ma anche nello stesso chunk se non controlli bene i parametri tende a diventare sempre piu sospirata.
