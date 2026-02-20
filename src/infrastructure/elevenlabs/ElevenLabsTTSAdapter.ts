@@ -154,8 +154,9 @@ export class ElevenLabsTTSAdapter {
     let timeOffset = 0;
 
     for (let i = 0; i < chunks.length; i++) {
+      const nextText = i < chunks.length - 1 ? chunks[i + 1] : undefined;
       const result = await this.callWithTimestamps(
-        chunks[i], voiceId, apiKey, settings, language, previousIds,
+        chunks[i], voiceId, apiKey, settings, language, previousIds, nextText,
       );
 
       const strippedAudio = stripMp3Metadata(result.audioData);
@@ -201,6 +202,7 @@ export class ElevenLabsTTSAdapter {
     settings: ElevenLabsVoiceSettings,
     language?: string,
     previousRequestIds?: string[],
+    nextText?: string,
   ): Promise<FullAudioWithTimestampsResult & { requestId?: string }> {
     const url = `${ELEVENLABS_TTS_URL}/${voiceId}/with-timestamps?output_format=mp3_44100_128`;
 
@@ -221,6 +223,9 @@ export class ElevenLabsTTSAdapter {
     }
     if (previousRequestIds && previousRequestIds.length > 0) {
       body.previous_request_ids = previousRequestIds.slice(-3);
+    }
+    if (nextText) {
+      body.next_text = nextText;
     }
 
     const response = await fetch(url, {
@@ -249,7 +254,7 @@ export class ElevenLabsTTSAdapter {
     }
 
     const data = await response.json();
-    const requestId = response.headers.get('request-id') ?? undefined;
+    const requestId = data.request_id ?? response.headers.get('request-id') ?? undefined;
 
     // Decode base64 audio
     const binaryStr = atob(data.audio_base64);
