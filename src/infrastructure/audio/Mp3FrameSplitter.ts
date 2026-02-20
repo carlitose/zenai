@@ -1,6 +1,12 @@
 import { File, Directory, Paths } from 'expo-file-system';
 import { parseFrameHeader, skipId3v2, findDataEnd, isFrameSync, getFrameSize, isXingFrame } from './Mp3FrameUtils';
 
+/** Seconds to shift the cut point. Positive = forward (into next segment), negative = backward. 0 = no shift. */
+const CUT_PAD_SECONDS = 0;
+
+/** Rounding direction when snapping to frame boundaries: 'floor' or 'ceil'. */
+const CUT_ROUNDING: 'floor' | 'ceil' = 'floor';
+
 export interface SplitResult {
   parts: Uint8Array[];
   actualCutTimes: number[];
@@ -79,17 +85,25 @@ export class Mp3FrameSplitter {
         continue;
       }
 
-      // Pad cutTime forward to preserve trailing reverb/breath,
-      // then round UP to the first frame at or after the padded time.
-      const paddedCut = cutTime + 0.050;
+      const adjustedCut = cutTime + CUT_PAD_SECONDS;
+
       let lo = 0;
       let hi = frameCumulativeTimes.length - 1;
-      while (lo < hi) {
-        const mid = (lo + hi) >> 1;
-        if (frameCumulativeTimes[mid] < paddedCut) {
-          lo = mid + 1;
-        } else {
-          hi = mid;
+
+      if (CUT_ROUNDING === 'floor') {
+        // Round DOWN: last frame boundary at or before the cut time.
+        // Preserves full beginning of next segment (no clipping).
+        while (lo < hi) {
+          const mid = (lo + hi + 1) >> 1;
+          if (frameCumulativeTimes[mid] <= adjustedCut) lo = mid;
+          else hi = mid - 1;
+        }
+      } else {
+        // Round UP: first frame boundary at or after the cut time.
+        while (lo < hi) {
+          const mid = (lo + hi) >> 1;
+          if (frameCumulativeTimes[mid] < adjustedCut) lo = mid + 1;
+          else hi = mid;
         }
       }
 

@@ -138,13 +138,13 @@ export class ElevenLabsTTSAdapter {
 
     for (const sentence of sentences) {
       if ((current + sentence).length > MAX_CHUNK_LENGTH - 500) {
-        if (current) chunks.push(current.trim());
+        if (current) chunks.push(current);
         current = sentence;
       } else {
         current += sentence;
       }
     }
-    if (current) chunks.push(current.trim());
+    if (current) chunks.push(current);
 
     const audioBuffers: Uint8Array[] = [];
     const previousIds: string[] = [];

@@ -80,6 +80,12 @@ interface SplitResult {
   actualCutTimes: number[];
 }
 
+/** Seconds to shift the cut point. Positive = forward (into next segment), negative = backward. 0 = no shift. */
+const CUT_PAD_SECONDS = 0;
+
+/** Rounding direction when snapping to frame boundaries: 'floor' or 'ceil'. */
+const CUT_ROUNDING: 'floor' | 'ceil' = 'floor';
+
 function splitMp3(audioData: Uint8Array, cutTimes: number[]): SplitResult {
   // 1. Strip metadata
   let start = skipId3v2(audioData);
@@ -136,15 +142,25 @@ function splitMp3(audioData: Uint8Array, cutTimes: number[]): SplitResult {
       continue;
     }
 
-    // Pad cutTime forward to preserve trailing reverb/breath,
-    // then round UP to the first frame at or after the padded time.
-    const paddedCut = cutTime + 0.050;
+    const adjustedCut = cutTime + CUT_PAD_SECONDS;
+
     let lo = 0;
     let hi = frameCumulativeTimes.length - 1;
-    while (lo < hi) {
-      const mid = (lo + hi) >> 1;
-      if (frameCumulativeTimes[mid] < paddedCut) lo = mid + 1;
-      else hi = mid;
+
+    if (CUT_ROUNDING === 'floor') {
+      // Round DOWN: last frame boundary at or before the cut time.
+      while (lo < hi) {
+        const mid = (lo + hi + 1) >> 1;
+        if (frameCumulativeTimes[mid] <= adjustedCut) lo = mid;
+        else hi = mid - 1;
+      }
+    } else {
+      // Round UP: first frame boundary at or after the cut time.
+      while (lo < hi) {
+        const mid = (lo + hi) >> 1;
+        if (frameCumulativeTimes[mid] < adjustedCut) lo = mid + 1;
+        else hi = mid;
+      }
     }
 
     cutFrameIndices.push(lo);
@@ -302,7 +318,7 @@ async function testSplitReassemble() {
 
   assert(parts.length === 2, `split into 2 parts (got ${parts.length})`);
   assert(actualCutTimes.length === 1, `1 actual cut time`);
-  assertClose(actualCutTimes[0], midTime, 0.08, `actual cut ~midpoint (tolerance 80ms, includes 50ms pad)`);
+  assertClose(actualCutTimes[0], midTime, 0.03, `actual cut ~midpoint (tolerance 30ms, frame rounding only)`);
 
   const part1Len = parts[0].length;
   const part2Len = parts[1].length;
@@ -577,6 +593,40 @@ Feel the weight of your body against whatever surface supports you.
   assert(alignment.characters.length > 0, "received alignment data");
   assert(alignment.characters.length === alignEnds.length, "alignment arrays same length");
 
+  // --- Alignment integrity checks ---
+  // Verify that ElevenLabs returned exactly one alignment entry per cleanText character.
+  // For single-chunk requests this should always hold. For multi-chunk (text > 4000 chars),
+  // the adapter's merging logic must preserve the invariant.
+  assert(alignment.characters.length === cleanText.length,
+    `alignment chars count === cleanText length (${alignment.characters.length} vs ${cleanText.length})`);
+
+  const alignmentJoined = alignment.characters.join('');
+  let charMismatches = 0;
+  let firstMismatchInfo = '';
+  for (let i = 0; i < Math.min(alignment.characters.length, cleanText.length); i++) {
+    if (alignment.characters[i] !== cleanText[i]) {
+      charMismatches++;
+      if (charMismatches === 1) {
+        firstMismatchInfo = `index ${i}: expected '${cleanText[i]}' (code ${cleanText.charCodeAt(i)}) got '${alignment.characters[i]}' (code ${alignment.characters[i].charCodeAt(0)})`;
+      }
+    }
+  }
+  if (charMismatches > 0) {
+    console.log(c.yellow(`  Alignment text mismatches: ${charMismatches} chars`));
+    console.log(c.yellow(`    First mismatch: ${firstMismatchInfo}`));
+  }
+  assert(charMismatches === 0, `alignment chars match cleanText char-by-char (mismatches: ${charMismatches})`);
+
+  // Verify marker alignment: at each marker's charIndex, the alignment character must match
+  for (const marker of markers) {
+    if (marker.charIndex <= 0 || marker.charIndex >= cleanText.length) continue;
+    const idx = marker.charIndex - 1;
+    if (idx < alignment.characters.length) {
+      assert(alignment.characters[idx] === cleanText[idx],
+        `marker ${marker.type} @ ${marker.charIndex}: alignment[${idx}]='${alignment.characters[idx]}' === cleanText[${idx}]='${cleanText[idx]}'`);
+    }
+  }
+
   // Save full speech for reference
   fs.writeFileSync(path.join(outputDir, "full_speech.mp3"), audioData);
 
@@ -805,6 +855,124 @@ async function testMultiChunkRoundTrip() {
 }
 
 // ---------------------------------------------------------------------------
+// Test 7: Multi-chunk Alignment Invariant (trim() bug detector)
+// ---------------------------------------------------------------------------
+async function testMultiChunkAlignmentInvariant() {
+  console.log(c.bold("\n=== Test 7: Multi-chunk Alignment Invariant (trim() bug detector) ===\n"));
+
+  const MAX_CHUNK = 4000; // Same as ElevenLabsTTSAdapter MAX_CHUNK_LENGTH
+
+  // --- Build meditation text > 4000 chars with markers ---
+  // We place [SILENT 5s] AFTER the expected first chunk boundary (~3500 chars)
+  // so its charIndex falls in the second chunk's character range.
+  // This means if the chunking loses characters (trim bug), the marker's
+  // charIndex will point to the WRONG character in the merged alignment.
+  const totalSentences = 60;
+  const markerAfterSentence = 48; // ~48*85 ≈ 4080 chars — well after chunk boundary
+
+  let rawText = "[DONG]\n[SILENT 3s]\n";
+  for (let i = 1; i <= totalSentences; i++) {
+    rawText += `Sentence number ${i}, take a deep breath and feel the peace flowing through your body now. `;
+    if (i === markerAfterSentence) {
+      rawText += "\n[SILENT 5s]\n";
+    }
+  }
+  rawText += "\n[DONG]";
+
+  // Strip markers
+  const { cleanText, markers } = stripMarkersWithPositions(rawText);
+
+  console.log(c.dim(`  Clean text length: ${cleanText.length} chars`));
+  console.log(c.dim(`  Markers: ${markers.map(m => `${m.type}@${m.charIndex}`).join(', ')}`));
+  assert(cleanText.length > MAX_CHUNK,
+    `cleanText > ${MAX_CHUNK} (got ${cleanText.length})`);
+
+  // --- Replicate chunking from ElevenLabsTTSAdapter.generateFullAudioWithTimestamps ---
+  // This MUST match the adapter's logic exactly.
+  // After the trim() fix, NO .trim() is applied to chunks.
+  const regexMatches = cleanText.match(/[^.!?]+[.!?]+/g) || [cleanText];
+  const chunks: string[] = [];
+  let current = '';
+
+  for (const sentence of regexMatches) {
+    if ((current + sentence).length > MAX_CHUNK - 500) {
+      if (current) chunks.push(current);  // No .trim() — the fix
+      current = sentence;
+    } else {
+      current += sentence;
+    }
+  }
+  if (current) chunks.push(current);  // No .trim() — the fix
+
+  console.log(c.dim(`  Regex matches: ${regexMatches.length} sentences`));
+  console.log(c.dim(`  Chunks: ${chunks.length}, lengths: [${chunks.map(ch => ch.length).join(', ')}]`));
+
+  // --- INVARIANT 1: chunks.join('') must reconstruct cleanText exactly ---
+  const joined = chunks.join('');
+  assert(joined.length === cleanText.length,
+    `chunks.join('').length === cleanText.length (${joined.length} vs ${cleanText.length})`);
+  assert(joined === cleanText,
+    `chunks.join('') === cleanText (char-for-char match)`);
+
+  // --- Simulate per-character alignment (merging across chunks) ---
+  // Same as ElevenLabsTTSAdapter: for each chunk, ElevenLabs returns per-char alignment.
+  // We merge them sequentially. If chunks.join('') !== cleanText, the merged alignment
+  // will have FEWER characters, causing all charIndex lookups after the boundary to be wrong.
+  const allChars: string[] = [];
+  const fakeCharDuration = 0.05; // 50ms per char
+  const allEnds: number[] = [];
+  let timeOffset = 0;
+
+  for (const chunk of chunks) {
+    for (let j = 0; j < chunk.length; j++) {
+      allChars.push(chunk[j]);
+      allEnds.push(timeOffset + (j + 1) * fakeCharDuration);
+    }
+    timeOffset += chunk.length * fakeCharDuration;
+  }
+
+  assert(allChars.length === cleanText.length,
+    `merged alignment length === cleanText.length (${allChars.length} vs ${cleanText.length})`);
+
+  // --- INVARIANT 2: at each marker's charIndex, alignment char must match cleanText ---
+  let markerAlignmentOk = true;
+  for (const marker of markers) {
+    if (marker.charIndex <= 0 || marker.charIndex >= cleanText.length) continue;
+    const alignIdx = marker.charIndex - 1;
+    if (alignIdx >= allChars.length) {
+      console.log(c.red(`    marker ${marker.type} @ charIndex=${marker.charIndex}: alignIdx ${alignIdx} OUT OF BOUNDS (allChars.length=${allChars.length})`));
+      markerAlignmentOk = false;
+      continue;
+    }
+    const expected = cleanText[alignIdx];
+    const actual = allChars[alignIdx];
+    if (actual !== expected) {
+      console.log(c.red(`    marker ${marker.type} @ charIndex=${marker.charIndex}: expected '${expected}' got '${actual}'`));
+      markerAlignmentOk = false;
+    } else {
+      console.log(c.dim(`    marker ${marker.type} @ charIndex=${marker.charIndex}: OK (char='${actual}')`));
+    }
+  }
+  assert(markerAlignmentOk, `all non-leading markers: alignment char matches cleanText char`);
+
+  // --- Diagnostics: show exact divergence point if invariant 1 failed ---
+  if (joined !== cleanText) {
+    for (let i = 0; i < Math.max(joined.length, cleanText.length); i++) {
+      if (joined[i] !== cleanText[i]) {
+        const ctx = 20;
+        console.log(c.red(`\n  DIVERGENCE at index ${i}:`));
+        console.log(c.red(`    cleanText[${i}] = '${cleanText[i] ?? 'EOF'}' (code ${cleanText[i] ? cleanText.charCodeAt(i) : '-'})`));
+        console.log(c.red(`    joined[${i}]    = '${joined[i] ?? 'EOF'}' (code ${joined[i] ? joined.charCodeAt(i) : '-'})`));
+        console.log(c.dim(`    cleanText context: ...${JSON.stringify(cleanText.slice(Math.max(0, i - ctx), i + ctx))}...`));
+        console.log(c.dim(`    joined context:    ...${JSON.stringify(joined.slice(Math.max(0, i - ctx), i + ctx))}...`));
+        console.log(c.dim(`    Characters lost: ${cleanText.length - joined.length}`));
+        break;
+      }
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Main
 // ---------------------------------------------------------------------------
 async function main() {
@@ -818,6 +986,7 @@ async function main() {
   await testSplitEdgeCases();
   await testMarkerToCutTimes();
   await testMultiChunkRoundTrip();
+  await testMultiChunkAlignmentInvariant();
 
   if (isLive) {
     await testLiveElevenLabsFlow();
